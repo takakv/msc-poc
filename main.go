@@ -10,13 +10,20 @@ import (
 import "math/big"
 
 type PublicParameters struct {
+	// Parameters of the Finite Field ElGamal group.
 	FFGroupParams voteproof.FFGroupParameters
+	// Parameters of the Elliptic Curve Bulletproofs group.
 	ECGroupParams voteproof.ECGroupParameters
-	BPParams      bulletproofs.BulletProofSetupParams
-	RPParams      voteproof.ProofParams
-	candidateMin  uint16
-	candidateMax  uint16
-	EGPK          algebra.Element
+	// ElGamal public key.
+	EGPK algebra.Element
+	// Lowest candidate number.
+	candidateMin uint16
+	// Highest candidate number.
+	candidateMax uint16
+	// Public parameters of Bulletproofs.
+	BPParams bulletproofs.BulletProofSetupParams
+	// Public parameters of the range proof protocol.
+	RPParams voteproof.ProofParams
 }
 
 func setup() PublicParameters {
@@ -88,11 +95,11 @@ func setup() PublicParameters {
 	var pp PublicParameters
 	pp.FFGroupParams = fieldGroupParams
 	pp.ECGroupParams = curveGroupParams
-	pp.BPParams = bpParams
-	pp.RPParams = rpParams
+	pp.EGPK = pp.FFGroupParams.H
 	pp.candidateMin = candidateStart
 	pp.candidateMax = candidateEnd
-	pp.EGPK = pp.FFGroupParams.H
+	pp.BPParams = bpParams
+	pp.RPParams = rpParams
 
 	return pp
 }
