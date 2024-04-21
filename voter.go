@@ -3,6 +3,7 @@ package main
 import (
 	"crypto/rand"
 	"fmt"
+	"github.com/takakv/msc-poc/algebra"
 	"github.com/takakv/msc-poc/bulletproofs"
 	"github.com/takakv/msc-poc/voteproof"
 	"math/big"
@@ -19,15 +20,16 @@ type BallotData struct {
 }
 
 func castVote(minCandidate, maxCandidate uint16,
-	pk ElGamalPublicKey,
 	bpParams bulletproofs.BulletProofSetupParams,
-	rpParams voteproof.ProofParams) BallotData {
+	rpParams voteproof.ProofParams,
+	EGPK algebra.Element,
+	FFG algebra.Group) BallotData {
 	rBig, _ := rand.Int(rand.Reader, big.NewInt(int64(maxCandidate-minCandidate)))
 
 	var choice = uint16(rBig.Uint64()) + minCandidate
 	fmt.Println("Chosen candidate:", choice)
 
-	ciphertext, rp := encryptVote(choice, pk)
+	ciphertext, rp := encryptVote(choice, EGPK, FFG)
 	// fmt.Println("ciphertext:", ciphertext)
 
 	start := time.Now()

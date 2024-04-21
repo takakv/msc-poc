@@ -5,15 +5,17 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"github.com/0xdecaf/zkrp/crypto/p256"
+	"github.com/takakv/msc-poc/algebra"
 	"math/big"
 )
 
 // FFGroupParameters holds the public parameters of a group.
 type FFGroupParameters struct {
-	G *big.Int // Base generator.
-	H *big.Int // Generator whose logarithm to the base G is not known.
-	N *big.Int // Group size.
-	F *big.Int // Field size.
+	G   *big.Int        // Base generator.
+	H   algebra.Element // Generator whose logarithm to the base G is not known.
+	N   *big.Int        // Group size.
+	F   *big.Int        // Field size.
+	FFG algebra.Group
 }
 
 // ECGroupParameters holds the public parameters of an EC group.
@@ -42,8 +44,8 @@ type ProofParams struct {
 
 // VerCommitments holds the commitments needed to verify the correctness proof.
 type VerCommitments struct {
-	Y   *big.Int
-	Xp  *big.Int
+	Y   algebra.Element // *big.Int
+	Xp  algebra.Element // *big.Int
 	Xq1 *p256.P256
 	Xq2 *p256.P256
 }
@@ -51,8 +53,8 @@ type VerCommitments struct {
 // SigmaProof contains the elements involved in the sigma protocol.
 // The proof is not complete without the commitments and Bulletproofs.
 type SigmaProof struct {
-	W         *big.Int
-	Kp        *big.Int
+	W         algebra.Element
+	Kp        algebra.Element
 	Kq1       *p256.P256
 	Kq2       *p256.P256
 	Challenge *big.Int
@@ -77,10 +79,13 @@ func Setup(lenSecret uint8, lenChallenge uint16, fieldSize uint16,
 	return params
 }
 
-func PedersenCommitFF(m *big.Int, r *big.Int, gp FFGroupParameters) *big.Int {
-	bind := new(big.Int).Exp(gp.G, m, gp.F)
-	blind := new(big.Int).Exp(gp.H, r, gp.F)
-	return new(big.Int).Mod(new(big.Int).Mul(bind, blind), gp.F)
+func PedersenCommitFF(m *big.Int, r *big.Int, gp FFGroupParameters) algebra.Element {
+	// bind := new(big.Int).Exp(gp.G, m, gp.F)
+	bind := gp.FFG.Element().BaseScale(m)
+	// blind := new(big.Int).Exp(gp.H, r, gp.F)
+	blind := gp.FFG.Element().Scale(gp.H, r)
+	// return new(big.Int).Mod(new(big.Int).Mul(bind, blind), gp.F)
+	return gp.FFG.Element().Add(bind, blind)
 }
 
 func PedersenCommitEC(m, r *big.Int, gp ECGroupParameters) *p256.P256 {
@@ -89,7 +94,7 @@ func PedersenCommitEC(m, r *big.Int, gp ECGroupParameters) *p256.P256 {
 	return new(p256.P256).Add(bind, blind)
 }
 
-func HashProof(w *big.Int, Kp *big.Int, Kq1, Kq2 *p256.P256) *big.Int {
+func HashProof(w algebra.Element, Kp algebra.Element, Kq1, Kq2 *p256.P256) *big.Int {
 	hasher := sha256.New()
 
 	var buffer bytes.Buffer
@@ -121,7 +126,7 @@ func Prove(secret *big.Int, rp *big.Int, rq1, rq2 *big.Int, params ProofParams) 
 	// fmt.Println("tq1:", tq1)
 	// fmt.Println("tq2:", tq2)
 
-	w := new(big.Int).Exp(params.AP.GFF.G, tp, params.AP.GFF.F)
+	w := params.AP.GFF.FFG.Element().BaseScale(tp)
 	Kp := PedersenCommitFF(kp, tp, params.AP.GFF)
 	Kq1 := PedersenCommitEC(kq, tq1, params.AP.GEC)
 	Kq2 := PedersenCommitEC(kq, tq2, params.AP.GEC)
@@ -153,17 +158,17 @@ func Prove(secret *big.Int, rp *big.Int, rq1, rq2 *big.Int, params ProofParams) 
 }
 
 func Verify(comm VerCommitments, proof SigmaProof, params ProofParams) bool {
-	l := new(big.Int).Exp(params.AP.GFF.G, proof.Sp, params.AP.GFF.F)
-	r := new(big.Int).Exp(comm.Y, proof.Challenge, params.AP.GFF.F)
-	r = new(big.Int).Mod(new(big.Int).Mul(proof.W, r), params.AP.GFF.F)
-	if l.Cmp(r) != 0 {
+	l := params.AP.GFF.FFG.Element().BaseScale(proof.Sp)
+	r := params.AP.GFF.FFG.Element().Scale(comm.Y, proof.Challenge)
+	r = params.AP.GFF.FFG.Element().Add(r, proof.W)
+	if !l.Equal(r) {
 		return false
 	}
 
 	left := PedersenCommitFF(proof.Z, proof.Sp, params.AP.GFF)
-	right := new(big.Int).Mul(proof.Kp, new(big.Int).Exp(comm.Xp, proof.Challenge, params.AP.GFF.F))
-	right = new(big.Int).Mod(right, params.AP.GFF.F)
-	if left.Cmp(right) != 0 {
+	right := params.AP.GFF.FFG.Element().Scale(comm.Xp, proof.Challenge)
+	right = params.AP.GFF.FFG.Element().Add(right, proof.Kp)
+	if !left.Equal(right) {
 		return false
 	}
 
