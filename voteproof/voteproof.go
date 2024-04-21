@@ -61,6 +61,7 @@ type SigmaProof struct {
 	Sp        *big.Int
 	Sq1       *big.Int
 	Sq2       *big.Int
+	Params    ProofParams
 }
 
 // Setup sets the common parameters for the vote correctness proof system.
@@ -150,32 +151,33 @@ func Prove(secret *big.Int, rp *big.Int, rq1, rq2 *big.Int, params ProofParams) 
 	proof.Sp = sp
 	proof.Sq1 = sq1
 	proof.Sq2 = sq2
+	proof.Params = params
 
 	return proof
 }
 
-func Verify(comm VerCommitments, proof SigmaProof, params ProofParams) bool {
-	l := params.GFF.I.Element().BaseScale(proof.Sp)
-	r := params.GFF.I.Element().Scale(comm.Y, proof.Challenge)
-	r = params.GFF.I.Element().Add(r, proof.W)
+func (proof *SigmaProof) Verify(comm VerCommitments) bool {
+	l := proof.Params.GFF.I.Element().BaseScale(proof.Sp)
+	r := proof.Params.GFF.I.Element().Scale(comm.Y, proof.Challenge)
+	r = proof.Params.GFF.I.Element().Add(r, proof.W)
 	if !l.Equal(r) {
 		return false
 	}
 
-	left := PedersenCommitFF(proof.Z, proof.Sp, params.GFF)
-	right := params.GFF.I.Element().Scale(comm.Xp, proof.Challenge)
-	right = params.GFF.I.Element().Add(right, proof.Kp)
+	left := PedersenCommitFF(proof.Z, proof.Sp, proof.Params.GFF)
+	right := proof.Params.GFF.I.Element().Scale(comm.Xp, proof.Challenge)
+	right = proof.Params.GFF.I.Element().Add(right, proof.Kp)
 	if !left.Equal(right) {
 		return false
 	}
 
-	left1 := PedersenCommitEC(proof.Z, proof.Sq1, params.GEC)
+	left1 := PedersenCommitEC(proof.Z, proof.Sq1, proof.Params.GEC)
 	right1 := new(p256.P256).Add(proof.Kq1, new(p256.P256).ScalarMult(comm.Xq1, proof.Challenge))
 	if left1.X.Cmp(right1.X) != 0 || left1.Y.Cmp(right1.Y) != 0 {
 		return false
 	}
 
-	left2 := PedersenCommitEC(proof.Z, proof.Sq2, params.GEC)
+	left2 := PedersenCommitEC(proof.Z, proof.Sq2, proof.Params.GEC)
 	right2 := new(p256.P256).Add(proof.Kq2, new(p256.P256).ScalarMult(comm.Xq2, proof.Challenge))
 	if left2.X.Cmp(right2.X) != 0 || left2.Y.Cmp(right2.Y) != 0 {
 		return false

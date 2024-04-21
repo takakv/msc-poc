@@ -40,7 +40,7 @@ func verifyVote(proofs BallotData, rpParams voteproof.ProofParams) bool {
 	commitments.Xq1 = Xq1
 	commitments.Xq2 = Xq2
 
-	result := voteproof.Verify(commitments, proofs.voteProof, rpParams)
+	result := proofs.voteProof.Verify(commitments)
 	durationRP := time.Since(startRP)
 
 	fmt.Println("Verify time BP:", durationBP)
