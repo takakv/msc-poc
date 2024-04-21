@@ -3,7 +3,6 @@ package main
 import (
 	"crypto/rand"
 	"fmt"
-	"github.com/takakv/msc-poc/algebra"
 	"github.com/takakv/msc-poc/bulletproofs"
 	"github.com/takakv/msc-poc/voteproof"
 	"math/big"
@@ -19,28 +18,24 @@ type BallotData struct {
 
 }
 
-func castVote(minCandidate, maxCandidate uint16,
-	bpParams bulletproofs.BulletProofSetupParams,
-	rpParams voteproof.ProofParams,
-	EGPK algebra.Element,
-	FFG algebra.Group) BallotData {
-	rBig, _ := rand.Int(rand.Reader, big.NewInt(int64(maxCandidate-minCandidate)))
+func castVote(pp PublicParameters) BallotData {
+	rBig, _ := rand.Int(rand.Reader, big.NewInt(int64(pp.candidateMax-pp.candidateMin)))
 
-	var choice = uint16(rBig.Uint64()) + minCandidate
+	var choice = uint16(rBig.Uint64()) + pp.candidateMin
 	fmt.Println("Chosen candidate:", choice)
 
-	ciphertext, rp := encryptVote(choice, EGPK, FFG)
+	ciphertext, rp := encryptVote(choice, pp.EGPK, pp.FFGroupParams.I)
 	// fmt.Println("ciphertext:", ciphertext)
 
 	start := time.Now()
 
 	// Prove the lower bound.
-	bp1, rq1, _ := bulletproofs.Prove(big.NewInt(int64(choice-minCandidate)), bpParams)
+	bp1, rq1, _ := bulletproofs.Prove(big.NewInt(int64(choice-pp.candidateMin)), pp.BPParams)
 	// Prove the upper bound.
-	bp2, rq2, _ := bulletproofs.Prove(big.NewInt(int64(maxCandidate-choice)), bpParams)
-	rq2inv := new(big.Int).Sub(rpParams.AP.GEC.N, rq2)
+	bp2, rq2, _ := bulletproofs.Prove(big.NewInt(int64(pp.candidateMax-choice)), pp.BPParams)
+	rq2inv := new(big.Int).Sub(pp.ECGroupParams.N, rq2)
 	// Prove that Bulletproofs correspond to the ciphertext.
-	rangeProof := voteproof.Prove(big.NewInt(int64(choice)), rp, rq1, rq2inv, rpParams)
+	rangeProof := voteproof.Prove(big.NewInt(int64(choice)), rp, rq1, rq2inv, pp.RPParams)
 
 	duration := time.Since(start)
 	fmt.Println("Prove time:", duration)

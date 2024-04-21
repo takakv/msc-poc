@@ -43,7 +43,7 @@ func Setup(n uint8) BpParams {
 	params := BpParams{}
 	params.group = suite
 	params.ORDER, _ = new(big.Int).SetString("1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ed", 16)
-	params.G = suite.Point().Base()
+	params.I = suite.Point().Base()
 	params.H = suite.Point().Mul(sec, nil)
 	params.L = int(n)
 	params.Gg = make([]kyber.Point, params.L)

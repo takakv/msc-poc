@@ -28,6 +28,14 @@ func (g *ModPGroup) equals(h Group) bool {
 	return g.fieldOrder.Cmp(gh.fieldOrder) == 0 && g.gen.Cmp(gh.gen) == 0
 }
 
+func (g *ModPGroup) P() *big.Int {
+	return g.fieldOrder
+}
+
+func (g *ModPGroup) N() *big.Int {
+	return g.groupOrder
+}
+
 func (g *ModPGroup) Generator() Element {
 	return &ModPElement{
 		group: g,

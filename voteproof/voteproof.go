@@ -11,11 +11,11 @@ import (
 
 // FFGroupParameters holds the public parameters of a group.
 type FFGroupParameters struct {
-	G   *big.Int        // Base generator.
-	H   algebra.Element // Generator whose logarithm to the base G is not known.
-	N   *big.Int        // Group size.
-	F   *big.Int        // Field size.
-	FFG algebra.Group
+	G algebra.Element // Group generator.
+	H algebra.Element // Generator whose logarithm to the base I is not known.
+	N *big.Int        // Group size.
+	F *big.Int        // Field size.
+	I algebra.Group   // Group implementation.
 }
 
 // ECGroupParameters holds the public parameters of an EC group.
@@ -80,12 +80,12 @@ func Setup(lenSecret uint8, lenChallenge uint16, fieldSize uint16,
 }
 
 func PedersenCommitFF(m *big.Int, r *big.Int, gp FFGroupParameters) algebra.Element {
-	// bind := new(big.Int).Exp(gp.G, m, gp.F)
-	bind := gp.FFG.Element().BaseScale(m)
+	// bind := new(big.Int).Exp(gp.I, m, gp.F)
+	bind := gp.I.Element().BaseScale(m)
 	// blind := new(big.Int).Exp(gp.H, r, gp.F)
-	blind := gp.FFG.Element().Scale(gp.H, r)
+	blind := gp.I.Element().Scale(gp.H, r)
 	// return new(big.Int).Mod(new(big.Int).Mul(bind, blind), gp.F)
-	return gp.FFG.Element().Add(bind, blind)
+	return gp.I.Element().Add(bind, blind)
 }
 
 func PedersenCommitEC(m, r *big.Int, gp ECGroupParameters) *p256.P256 {
@@ -126,7 +126,7 @@ func Prove(secret *big.Int, rp *big.Int, rq1, rq2 *big.Int, params ProofParams) 
 	// fmt.Println("tq1:", tq1)
 	// fmt.Println("tq2:", tq2)
 
-	w := params.AP.GFF.FFG.Element().BaseScale(tp)
+	w := params.AP.GFF.I.Element().BaseScale(tp)
 	Kp := PedersenCommitFF(kp, tp, params.AP.GFF)
 	Kq1 := PedersenCommitEC(kq, tq1, params.AP.GEC)
 	Kq2 := PedersenCommitEC(kq, tq2, params.AP.GEC)
@@ -158,16 +158,16 @@ func Prove(secret *big.Int, rp *big.Int, rq1, rq2 *big.Int, params ProofParams) 
 }
 
 func Verify(comm VerCommitments, proof SigmaProof, params ProofParams) bool {
-	l := params.AP.GFF.FFG.Element().BaseScale(proof.Sp)
-	r := params.AP.GFF.FFG.Element().Scale(comm.Y, proof.Challenge)
-	r = params.AP.GFF.FFG.Element().Add(r, proof.W)
+	l := params.AP.GFF.I.Element().BaseScale(proof.Sp)
+	r := params.AP.GFF.I.Element().Scale(comm.Y, proof.Challenge)
+	r = params.AP.GFF.I.Element().Add(r, proof.W)
 	if !l.Equal(r) {
 		return false
 	}
 
 	left := PedersenCommitFF(proof.Z, proof.Sp, params.AP.GFF)
-	right := params.AP.GFF.FFG.Element().Scale(comm.Xp, proof.Challenge)
-	right = params.AP.GFF.FFG.Element().Add(right, proof.Kp)
+	right := params.AP.GFF.I.Element().Scale(comm.Xp, proof.Challenge)
+	right = params.AP.GFF.I.Element().Add(right, proof.Kp)
 	if !left.Equal(right) {
 		return false
 	}

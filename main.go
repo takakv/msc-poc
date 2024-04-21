@@ -9,21 +9,13 @@ import (
 )
 import "math/big"
 
-var (
-	bigZero = big.NewInt(0)
-	bigOne  = big.NewInt(1)
-	bigTwo  = big.NewInt(2)
-)
-
 type PublicParameters struct {
 	FFGroupParams voteproof.FFGroupParameters
 	ECGroupParams voteproof.ECGroupParameters
-	PublicKey     ElGamalPublicKey
 	BPParams      bulletproofs.BulletProofSetupParams
 	RPParams      voteproof.ProofParams
 	candidateMin  uint16
 	candidateMax  uint16
-	FFG           algebra.Group
 	EGPK          algebra.Element
 }
 
@@ -66,24 +58,8 @@ func setup() PublicParameters {
 
 	print(RFC3526ModPGroup3072)
 
-	// Safe prime oder of the field used for ElGamal encryption.
-	ffOrder, _ := new(big.Int).SetString("5809605995369958062791915965639201402176612226902900533702900882779736177890990861472094774477339581147373410185646378328043729800750470098210924487866935059164371588168047540943981644516632755067501626434556398193186628990071248660819361205119793693985433297036118232914410171876807536457391277857011849897410207519105333355801121109356897459426271845471397952675959440793493071628394122780510124618488232602464649876850458861245784240929258426287699705312584509625419513463605155428017165714465363094021609290561084025893662561222573202082865797821865270991145082200656978177192827024538990239969175546190770645685893438011714430426409338676314743571154537142031573004276428701433036381801705308659830751190352946025482059931306571004727362479688415574702596946457770284148435989129632853918392117997472632693078113129886487399347796982772784615865232621289656944284216824611318709764535152507354116344703769998514148343807", 10)
-	// Sophie-Germain prime order of the group of quadratic residues needed for semantic security.
-	voteGroupOrder := new(big.Int).Div(new(big.Int).Sub(ffOrder, bigOne), bigTwo)
-	voteGroupGenerator := big.NewInt(2)
-
-	var egParams ElGamalParameters
-	egParams.P = ffOrder
-	egParams.Q = voteGroupOrder
-	egParams.G = voteGroupGenerator
-
 	// W.l.o.g. this secret is not known to any one party.
-	var egPriv ElGamalPrivateKey
-	egPriv.X = big.NewInt(13)
-
-	var egPub ElGamalPublicKey
-	egPub.ElGamalParameters = egParams
-	egPub.Y = new(big.Int).Exp(egParams.G, egPriv.X, egParams.P)
+	elGamalPrivateKey := big.NewInt(13)
 
 	bpParams, _ := bulletproofs.Setup(65536)
 
@@ -91,11 +67,11 @@ func setup() PublicParameters {
 	curveOrder, _ := new(big.Int).SetString("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141", 16)
 
 	var fieldGroupParams voteproof.FFGroupParameters
-	fieldGroupParams.FFG = RFC3526ModPGroup3072
-	fieldGroupParams.F = egPub.P
-	fieldGroupParams.N = egPub.Q
-	fieldGroupParams.G = egPub.G
-	fieldGroupParams.H = fieldGroupParams.FFG.Generator().BaseScale(egPriv.X)
+	fieldGroupParams.I = RFC3526ModPGroup3072
+	fieldGroupParams.F = fieldGroupParams.I.P()
+	fieldGroupParams.N = fieldGroupParams.I.N()
+	fieldGroupParams.G = fieldGroupParams.I.Generator()
+	fieldGroupParams.H = fieldGroupParams.I.Element().BaseScale(elGamalPrivateKey)
 
 	var curveGroupParams voteproof.ECGroupParameters
 	curveGroupParams.N = curveOrder
@@ -116,8 +92,7 @@ func setup() PublicParameters {
 	pp.RPParams = rpParams
 	pp.candidateMin = candidateStart
 	pp.candidateMax = candidateEnd
-	pp.FFG = RFC3526ModPGroup3072
-	pp.EGPK = pp.FFG.Generator().BaseScale(egPriv.X)
+	pp.EGPK = pp.FFGroupParams.H
 
 	return pp
 }
@@ -126,8 +101,7 @@ func main() {
 	pp := setup()
 
 	fmt.Println("Vote casting")
-	vote := castVote(pp.candidateMin, pp.candidateMax,
-		pp.BPParams, pp.RPParams, pp.EGPK, pp.FFG)
+	vote := castVote(pp)
 
 	fmt.Println()
 	fmt.Println("Vote verification")

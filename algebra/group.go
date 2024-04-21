@@ -27,7 +27,7 @@ type Element interface {
 
 // Group is an algebraic group.
 type Group interface {
-	// Generator returns G.
+	// Generator returns I.
 	Generator() Element
 	// Identity returns E.
 	//
@@ -41,4 +41,7 @@ type Group interface {
 	Random() Element
 
 	Element() Element
+
+	P() *big.Int
+	N() *big.Int
 }
