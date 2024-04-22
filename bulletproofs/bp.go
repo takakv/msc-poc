@@ -46,7 +46,7 @@ type BulletProofSetupParams struct {
 	Gg []algebra.Element
 	Hh []algebra.Element
 	// InnerProductParams is the setup parameters for the inner product proof.
-	InnerProductParams InnerProductParamsSP
+	InnerProductParams InnerProductParams
 	SP                 algebra.Group
 }
 
@@ -63,7 +63,7 @@ type BulletProof struct {
 	Taux              *big.Int
 	Mu                *big.Int
 	Tprime            *big.Int
-	InnerProductProof InnerProductProofSP
+	InnerProductProof InnerProductProof
 	Commit            algebra.Element
 	Params            BulletProofSetupParams
 }
@@ -218,12 +218,12 @@ func Prove(secret *big.Int, params BulletProofSetupParams) (BulletProof, *big.In
 
 	// SetupInnerProduct Inner Product (Section 4.2)
 	var setupErr error
-	params.InnerProductParams, setupErr = setupInnerProductSP(params.H, params.Gg, hprime, tprime, params.N, params.SP)
+	params.InnerProductParams, setupErr = setupInnerProduct(params.H, params.Gg, hprime, tprime, params.N, params.SP)
 	if setupErr != nil {
 		return proof, gamma, setupErr
 	}
-	commit := commitInnerProductSP(params.Gg, hprime, bl, br, params.SP)
-	proofip, _ := proveInnerProductSP(bl, br, commit, params.InnerProductParams)
+	commit := commitInnerProduct(params.Gg, hprime, bl, br, params.SP)
+	proofip, _ := proveInnerProduct(bl, br, commit, params.InnerProductParams)
 
 	proof.V = V
 	proof.A = A
@@ -331,7 +331,7 @@ func (proof *BulletProof) Verify() (bool, error) {
 	c67 := rP.IsIdentity()
 
 	// Verify Inner Product Proof ################################################
-	ok, _ := proof.InnerProductProof.VerifySP()
+	ok, _ := proof.InnerProductProof.Verify()
 
 	result := c65 && c67 && ok
 
@@ -339,7 +339,7 @@ func (proof *BulletProof) Verify() (bool, error) {
 }
 
 /*
-SampleRandomVector generates a vector composed by random big numbers.
+sampleRandomVector generates a vector composed by random big numbers.
 */
 func sampleRandomVector(N int64, SP algebra.Group) []*big.Int {
 	s := make([]*big.Int, N)
