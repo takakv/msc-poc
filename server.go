@@ -25,11 +25,11 @@ func verifyVote(proofs BallotData, rpParams voteproof.ProofParams) bool {
 	startRP := time.Now()
 	// Shift back lower bound.
 	loShift := rpParams.GEC.I.Element().BaseScale(big.NewInt(int64(rpParams.RangeLo)))
-	Xq1 := rpParams.GEC.I.Element().Add(loShift, proofs.bpLower.VEl)
+	Xq1 := rpParams.GEC.I.Element().Add(loShift, proofs.bpLower.V)
 
 	// Shift back upper bound.
 	upShift := rpParams.GEC.I.Element().BaseScale(big.NewInt(int64(rpParams.RangeHi)))
-	inv := rpParams.GEC.I.Element().Scale(proofs.bpUpper.VEl, big.NewInt(-1))
+	inv := rpParams.GEC.I.Element().Scale(proofs.bpUpper.V, big.NewInt(-1))
 	Xq2 := rpParams.GEC.I.Element().Add(upShift, inv)
 
 	var commitments voteproof.VerCommitments
