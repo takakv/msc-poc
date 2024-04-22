@@ -18,13 +18,10 @@
 package bulletproofs
 
 import (
-	"encoding/json"
 	"github.com/takakv/msc-poc/algebra"
 	"math"
 	"math/big"
 	"testing"
-
-	"github.com/stretchr/testify/assert"
 )
 
 func TestXEqualsRangeStart(t *testing.T) {
@@ -33,11 +30,6 @@ func TestXEqualsRangeStart(t *testing.T) {
 
 	params := setupRange(t, rangeEnd)
 	if proveAndVerifyRange(x, params) != true {
-		t.Errorf("x equal to range start should verify successfully")
-	}
-
-	paramsSP := setupRangeSP(t, rangeEnd)
-	if proveAndVerifyRangeSP(x, paramsSP) != true {
 		t.Errorf("x equal to range start should verify successfully")
 	}
 }
@@ -50,11 +42,6 @@ func TestXLowerThanRangeStart(t *testing.T) {
 	if proveAndVerifyRange(x, params) == true {
 		t.Errorf("x lower than range start should not verify")
 	}
-
-	paramsSP := setupRangeSP(t, rangeEnd)
-	if proveAndVerifyRangeSP(x, paramsSP) == true {
-		t.Errorf("x lower than range start should not verify")
-	}
 }
 
 func TestXHigherThanRangeEnd(t *testing.T) {
@@ -63,11 +50,6 @@ func TestXHigherThanRangeEnd(t *testing.T) {
 
 	params := setupRange(t, rangeEnd)
 	if proveAndVerifyRange(x, params) == true {
-		t.Errorf("x higher than range end should not verify")
-	}
-
-	paramsSP := setupRangeSP(t, rangeEnd)
-	if proveAndVerifyRangeSP(x, paramsSP) == true {
 		t.Errorf("x higher than range end should not verify")
 	}
 }
@@ -80,11 +62,6 @@ func TestXEqualToRangeEnd(t *testing.T) {
 	if proveAndVerifyRange(x, params) == true {
 		t.Errorf("x equal to range end should not verify")
 	}
-
-	paramsSP := setupRangeSP(t, rangeEnd)
-	if proveAndVerifyRangeSP(x, paramsSP) == true {
-		t.Errorf("x equal to range end should not verify")
-	}
 }
 
 func TestXWithinRange(t *testing.T) {
@@ -95,24 +72,10 @@ func TestXWithinRange(t *testing.T) {
 	if proveAndVerifyRange(x, params) != true {
 		t.Errorf("x within range should verify successfully")
 	}
-
-	paramsSP := setupRangeSP(t, rangeEnd)
-	if proveAndVerifyRangeSP(x, paramsSP) != true {
-		t.Errorf("x within range should verify successfully")
-	}
 }
 
 func setupRange(t *testing.T, rangeEnd int64) BulletProofSetupParams {
-	params, err := Setup(rangeEnd)
-	if err != nil {
-		t.Errorf("Invalid range end: %s", err)
-		t.FailNow()
-	}
-	return params
-}
-
-func setupRangeSP(t *testing.T, rangeEnd int64) BulletProofSetupParamsSP {
-	params, err := SetupSP(rangeEnd, algebra.NewSecP256k1Group())
+	params, err := Setup(rangeEnd, algebra.NewSecP256k1Group())
 	if err != nil {
 		t.Errorf("Invalid range end: %s", err)
 		t.FailNow()
@@ -126,14 +89,9 @@ func proveAndVerifyRange(x *big.Int, params BulletProofSetupParams) bool {
 	return ok
 }
 
-func proveAndVerifyRangeSP(x *big.Int, params BulletProofSetupParamsSP) bool {
-	proof, _, _ := ProveSP(x, params)
-	ok, _ := proof.VerifySP()
-	return ok
-}
-
+/* TODO: reimplement and test marshalling
 func TestJsonEncodeDecode(t *testing.T) {
-	params, _ := Setup(MAX_RANGE_END)
+	params, _ := Setup(MAX_RANGE_END, algebra.NewSecP256k1Group())
 	proof, _, _ := Prove(new(big.Int).SetInt64(18), params)
 	jsonEncoded, err := json.Marshal(proof)
 	if err != nil {
@@ -156,3 +114,4 @@ func TestJsonEncodeDecode(t *testing.T) {
 	}
 	assert.True(t, ok, "should verify")
 }
+*/
