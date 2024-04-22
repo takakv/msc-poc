@@ -85,6 +85,9 @@ func (e *Point) Negate(a Element) Element {
 
 func (e *Point) Equal(b Element) bool {
 	cb := e.check(b)
+	if e.val.X == nil || e.val.Y == nil || cb.val.X == nil || cb.val.Y == nil {
+		return e.val.X == nil && e.val.Y == nil && cb.val.X == nil && cb.val.Y == nil
+	}
 	return e.val.X.Cmp(cb.val.X) == 0 && e.val.Y.Cmp(cb.val.Y) == 0
 }
 
@@ -124,6 +127,13 @@ func (e *Point) FieldOrder() *big.Int {
 
 func (e *Point) String() string {
 	return e.val.String()
+}
+
+func (e *Point) IsIdentity() bool {
+	if e.val.X == nil && e.val.Y == nil {
+		return true
+	}
+	return e.val.X.Cmp(big.NewInt(0)) == 0 && e.val.Y.Cmp(big.NewInt(0)) == 0
 }
 
 func NewSecP256k1Group() Group {

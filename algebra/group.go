@@ -23,6 +23,8 @@ type Element interface {
 	FieldOrder() *big.Int
 
 	String() string
+
+	IsIdentity() bool
 }
 
 // Group is an algebraic group.

@@ -21,9 +21,10 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"errors"
+	"github.com/ing-bank/zkrp/crypto/p256"
+	"github.com/takakv/msc-poc/algebra"
 	"math/big"
 
-	"github.com/ing-bank/zkrp/crypto/p256"
 	"github.com/ing-bank/zkrp/util/bn"
 	"github.com/ing-bank/zkrp/util/intconversion"
 )
@@ -49,16 +50,14 @@ func powerOf(x *big.Int, n int64) []*big.Int {
 }
 
 /*
-Hash is responsible for the computing a Zp element given elements from GT and G1.
+HashBPSP is responsible for the computing a Zp element given elements from GT and G1.
 */
-func HashBP(A, S *p256.P256) (*big.Int, *big.Int, error) {
+func HashBPSP(A, S algebra.Element) (*big.Int, *big.Int, error) {
 
 	digest1 := sha256.New()
 	var buffer bytes.Buffer
-	buffer.WriteString(A.X.String())
-	buffer.WriteString(A.Y.String())
-	buffer.WriteString(S.X.String())
-	buffer.WriteString(S.Y.String())
+	buffer.WriteString(A.String())
+	buffer.WriteString(S.String())
 	digest1.Write(buffer.Bytes())
 	output1 := digest1.Sum(nil)
 	tmp1 := output1[0:]
@@ -66,10 +65,8 @@ func HashBP(A, S *p256.P256) (*big.Int, *big.Int, error) {
 
 	digest2 := sha256.New()
 	var buffer2 bytes.Buffer
-	buffer2.WriteString(A.X.String())
-	buffer2.WriteString(A.Y.String())
-	buffer2.WriteString(S.X.String())
-	buffer2.WriteString(S.Y.String())
+	buffer2.WriteString(A.String())
+	buffer2.WriteString(S.String())
 	buffer2.WriteString(result1.String())
 	digest2.Write(buffer.Bytes())
 	output2 := digest2.Sum(nil)
@@ -77,6 +74,57 @@ func HashBP(A, S *p256.P256) (*big.Int, *big.Int, error) {
 	result2 := new(big.Int).SetBytes(tmp2)
 
 	return result1, result2, nil
+}
+
+/*
+HashBP is responsible for the computing a Zp element given elements from GT and G1.
+*/
+func HashBP(A, S *p256.P256) (*big.Int, *big.Int, error) {
+
+	digest1 := sha256.New()
+	var buffer bytes.Buffer
+	buffer.WriteString(A.String())
+	buffer.WriteString(S.String())
+	digest1.Write(buffer.Bytes())
+	output1 := digest1.Sum(nil)
+	tmp1 := output1[0:]
+	result1 := new(big.Int).SetBytes(tmp1)
+
+	digest2 := sha256.New()
+	var buffer2 bytes.Buffer
+	buffer2.WriteString(A.String())
+	buffer2.WriteString(S.String())
+	buffer2.WriteString(result1.String())
+	digest2.Write(buffer.Bytes())
+	output2 := digest2.Sum(nil)
+	tmp2 := output2[0:]
+	result2 := new(big.Int).SetBytes(tmp2)
+
+	return result1, result2, nil
+}
+
+/*
+VectorExpSP computes Prod_i^n{a[i]^b[i]}.
+*/
+func VectorExpSP(a []algebra.Element, b []*big.Int, SP algebra.Group) (algebra.Element, error) {
+	var (
+		result  algebra.Element
+		i, n, m int64
+	)
+	n = int64(len(a))
+	m = int64(len(b))
+	if n != m {
+		return nil, errors.New("Size of first argument is different from size of second argument.")
+	}
+	i = 0
+	// result = new(p256.P256).SetInfinity()
+	result = SP.Identity()
+	for i < n {
+		// result.Multiply(result, new(p256.P256).ScalarMult(a[i], b[i]))
+		result = SP.Element().Add(result, SP.Element().Scale(a[i], b[i]))
+		i = i + 1
+	}
+	return result, nil
 }
 
 /*

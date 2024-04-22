@@ -135,6 +135,10 @@ func (e *ModPElement) String() string {
 	return e.val.String()
 }
 
+func (e *ModPElement) IsIdentity() bool {
+	return e.val.Cmp(big.NewInt(1)) == 0
+}
+
 func NewModPGroup(name string, fieldOrder, generator string) Group {
 	repr := strings.Join(strings.Fields(fieldOrder), "")
 
