@@ -11,9 +11,9 @@ import "math/big"
 
 type PublicParameters struct {
 	// Parameters of the Finite Field ElGamal group.
-	FFGroupParams voteproof.FFGroupParameters
+	FFGroupParams voteproof.GroupParameters
 	// Parameters of the Elliptic Curve Bulletproofs group.
-	ECGroupParams voteproof.ECGroupParameters
+	ECGroupParams voteproof.GroupParameters
 	// ElGamal public key.
 	EGPK algebra.Element
 	// Lowest candidate number.
@@ -63,27 +63,29 @@ func setup() PublicParameters {
 		43DB5BFC E0FD108E 4B82D120 A93AD2CA FFFFFFFF FFFFFFFF
 		`, "2")
 
-	print(RFC3526ModPGroup3072)
+	SecP256k1Group := algebra.NewSecP256k1Group()
 
 	// W.l.o.g. this secret is not known to any one party.
 	elGamalPrivateKey := big.NewInt(13)
 
 	bpParams, _ := bulletproofs.Setup(65536)
 
-	// Prime order of the group of elliptic curve points.
-	curveOrder, _ := new(big.Int).SetString("FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFFEBAAEDCE6AF48A03BBFD25E8CD0364141", 16)
-
-	var fieldGroupParams voteproof.FFGroupParameters
+	var fieldGroupParams voteproof.GroupParameters
 	fieldGroupParams.I = RFC3526ModPGroup3072
 	fieldGroupParams.F = fieldGroupParams.I.P()
 	fieldGroupParams.N = fieldGroupParams.I.N()
 	fieldGroupParams.G = fieldGroupParams.I.Generator()
 	fieldGroupParams.H = fieldGroupParams.I.Element().BaseScale(elGamalPrivateKey)
 
-	var curveGroupParams voteproof.ECGroupParameters
-	curveGroupParams.N = curveOrder
-	curveGroupParams.G = (*p256.P256)(bpParams.G)
-	curveGroupParams.H = (*p256.P256)(bpParams.H)
+	tmp1 := (*p256.P256)(bpParams.H).X.Bytes()
+	tmp2 := (*p256.P256)(bpParams.H).Y.Bytes()
+
+	var curveGroupParams voteproof.GroupParameters
+	curveGroupParams.I = SecP256k1Group
+	curveGroupParams.F = fieldGroupParams.I.P()
+	curveGroupParams.N = curveGroupParams.I.N()
+	curveGroupParams.G = curveGroupParams.I.Generator()
+	curveGroupParams.H = curveGroupParams.I.Element().SetBytes(append(tmp1, tmp2...))
 
 	var algebraicParams voteproof.AlgebraicParameters
 	algebraicParams.GFF = fieldGroupParams

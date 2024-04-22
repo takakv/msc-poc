@@ -34,11 +34,19 @@ func verifyVote(proofs BallotData, rpParams voteproof.ProofParams) bool {
 	Cq2 := (*p256.P256)(proofs.bpUpper.V)
 	Xq2 := new(p256.P256).Add(upShift, new(p256.P256).ScalarMult(Cq2, big.NewInt(-1)))
 
+	tmpX := Xq1.X.Bytes()
+	tmpY := Xq1.Y.Bytes()
+	Xq1El := rpParams.GEC.I.Element().SetBytes(append(tmpX, tmpY...))
+
+	tmpX = Xq2.X.Bytes()
+	tmpY = Xq2.Y.Bytes()
+	Xq2El := rpParams.GEC.I.Element().SetBytes(append(tmpX, tmpY...))
+
 	var commitments voteproof.VerCommitments
 	commitments.Y = proofs.ballot.U
 	commitments.Xp = proofs.ballot.V
-	commitments.Xq1 = Xq1
-	commitments.Xq2 = Xq2
+	commitments.Xq1 = Xq1El
+	commitments.Xq2 = Xq2El
 
 	result := proofs.voteProof.Verify(commitments)
 	durationRP := time.Since(startRP)

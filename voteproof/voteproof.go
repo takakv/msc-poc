@@ -4,13 +4,12 @@ import (
 	"bytes"
 	"crypto/rand"
 	"crypto/sha256"
-	"github.com/0xdecaf/zkrp/crypto/p256"
 	"github.com/takakv/msc-poc/algebra"
 	"math/big"
 )
 
-// FFGroupParameters describes a FF group.
-type FFGroupParameters struct {
+// GroupParameters describes a FF group.
+type GroupParameters struct {
 	G algebra.Element // Group generator.
 	H algebra.Element // Generator whose logarithm to the base G is not known.
 	N *big.Int        // Group size.
@@ -18,17 +17,10 @@ type FFGroupParameters struct {
 	I algebra.Group   // Group implementation.
 }
 
-// ECGroupParameters describes an EC group.
-type ECGroupParameters struct {
-	G *p256.P256 // Base point.
-	H *p256.P256 // Point whose logarithm to the base G is not known.
-	N *big.Int   // Group size.
-}
-
 // AlgebraicParameters describes both groups of the vote correctness proof system.
 type AlgebraicParameters struct {
-	GFF FFGroupParameters // ElGamal group.
-	GEC ECGroupParameters // Bulletproofs group.
+	GFF GroupParameters // ElGamal group.
+	GEC GroupParameters // Bulletproofs group.
 }
 
 // ProofParams holds the parameters of the vote correctness proof system.
@@ -45,23 +37,38 @@ type ProofParams struct {
 type VerCommitments struct {
 	Y   algebra.Element // First component of an ElGamal ciphertext.
 	Xp  algebra.Element // Second component of en ElGamal ciphertext.
-	Xq1 *p256.P256      // Pedersen commitment to a secret.
-	Xq2 *p256.P256      // Pedersen commitment to a secret.
+	Xq1 algebra.Element // Pedersen commitment to a secret.
+	Xq2 algebra.Element // Pedersen commitment to a secret.
+}
+
+// SigmaCommit represents the initial commitments of the protocol.
+type SigmaCommit struct {
+	W   algebra.Element
+	Kp  algebra.Element
+	Kq1 algebra.Element
+	Kq2 algebra.Element
+}
+
+// SigmaChallenge represents the random challenge.
+type SigmaChallenge struct {
+	Challenge *big.Int
+}
+
+// SigmaResponse represents the response of the protocol.
+type SigmaResponse struct {
+	Z   *big.Int
+	Sp  *big.Int
+	Sq1 *big.Int
+	Sq2 *big.Int
 }
 
 // SigmaProof contains the elements involved in the sigma protocol.
 // The proof is not complete without the commitments and Bulletproofs.
 type SigmaProof struct {
-	W         algebra.Element
-	Kp        algebra.Element
-	Kq1       *p256.P256
-	Kq2       *p256.P256
-	Challenge *big.Int
-	Z         *big.Int
-	Sp        *big.Int
-	Sq1       *big.Int
-	Sq2       *big.Int
-	Params    ProofParams
+	SigmaCommit    // 1st move data.
+	SigmaChallenge // 2nd move data.
+	SigmaResponse  // 3rd move data.
+	Params         ProofParams
 }
 
 // Setup sets the common parameters for the vote correctness proof system.
@@ -80,19 +87,20 @@ func Setup(lenSecret uint8, lenChallenge uint16, fieldSize uint16,
 	return params
 }
 
-func PedersenCommitFF(m *big.Int, r *big.Int, gp FFGroupParameters) algebra.Element {
+func PedersenCommit(m *big.Int, r *big.Int, gp GroupParameters) algebra.Element {
 	bind := gp.I.Element().BaseScale(m)
 	blind := gp.I.Element().Scale(gp.H, r)
 	return gp.I.Element().Add(bind, blind)
 }
 
-func PedersenCommitEC(m, r *big.Int, gp ECGroupParameters) *p256.P256 {
-	bind := new(p256.P256).ScalarBaseMult(m)
-	blind := new(p256.P256).ScalarMult(gp.H, r)
-	return new(p256.P256).Add(bind, blind)
+func SigmaPedersenCheck(z, s, c *big.Int, k, x algebra.Element, gp GroupParameters) bool {
+	left := PedersenCommit(z, s, gp)
+	right := gp.I.Element().Scale(x, c)
+	right = gp.I.Element().Add(right, k)
+	return left.Equal(right)
 }
 
-func HashProof(w algebra.Element, Kp algebra.Element, Kq1, Kq2 *p256.P256) *big.Int {
+func HashProof(w algebra.Element, Kp algebra.Element, Kq1, Kq2 algebra.Element) *big.Int {
 	hasher := sha256.New()
 
 	var buffer bytes.Buffer
@@ -107,11 +115,6 @@ func HashProof(w algebra.Element, Kp algebra.Element, Kq1, Kq2 *p256.P256) *big.
 }
 
 func Prove(secret *big.Int, rp *big.Int, rq1, rq2 *big.Int, params ProofParams) SigmaProof {
-	// fmt.Println("x:", secret)
-	// fmt.Println("r_p:", rp)
-	// fmt.Println("r_q:", rq1)
-	// fmt.Println("r_q':", rq2)
-
 	k, _ := rand.Int(rand.Reader, params.GEC.N)
 	kp := new(big.Int).Mod(k, params.GFF.N)
 	kq := new(big.Int).Mod(k, params.GFF.N)
@@ -119,15 +122,11 @@ func Prove(secret *big.Int, rp *big.Int, rq1, rq2 *big.Int, params ProofParams) 
 	tp, _ := rand.Int(rand.Reader, params.GFF.N)
 	tq1, _ := rand.Int(rand.Reader, params.GEC.N)
 	tq2, _ := rand.Int(rand.Reader, params.GEC.N)
-	// fmt.Println("k:", k)
-	// fmt.Println("tp:", tp)
-	// fmt.Println("tq1:", tq1)
-	// fmt.Println("tq2:", tq2)
 
 	w := params.GFF.I.Element().BaseScale(tp)
-	Kp := PedersenCommitFF(kp, tp, params.GFF)
-	Kq1 := PedersenCommitEC(kq, tq1, params.GEC)
-	Kq2 := PedersenCommitEC(kq, tq2, params.GEC)
+	Kp := PedersenCommit(kp, tp, params.GFF)
+	Kq1 := PedersenCommit(kq, tq1, params.GEC)
+	Kq2 := PedersenCommit(kq, tq2, params.GEC)
 
 	challenge := HashProof(w, Kp, Kq1, Kq2)
 	if challenge.Cmp(new(big.Int).Exp(big.NewInt(2), big.NewInt(int64(params.bc)), nil)) != -1 {
@@ -164,22 +163,18 @@ func (proof *SigmaProof) Verify(comm VerCommitments) bool {
 		return false
 	}
 
-	left := PedersenCommitFF(proof.Z, proof.Sp, proof.Params.GFF)
-	right := proof.Params.GFF.I.Element().Scale(comm.Xp, proof.Challenge)
-	right = proof.Params.GFF.I.Element().Add(right, proof.Kp)
-	if !left.Equal(right) {
+	if !SigmaPedersenCheck(proof.Z, proof.Sp, proof.Challenge, proof.Kp,
+		comm.Xp, proof.Params.GFF) {
 		return false
 	}
 
-	left1 := PedersenCommitEC(proof.Z, proof.Sq1, proof.Params.GEC)
-	right1 := new(p256.P256).Add(proof.Kq1, new(p256.P256).ScalarMult(comm.Xq1, proof.Challenge))
-	if left1.X.Cmp(right1.X) != 0 || left1.Y.Cmp(right1.Y) != 0 {
+	if !SigmaPedersenCheck(proof.Z, proof.Sq1, proof.Challenge, proof.Kq1,
+		comm.Xq1, proof.Params.GEC) {
 		return false
 	}
 
-	left2 := PedersenCommitEC(proof.Z, proof.Sq2, proof.Params.GEC)
-	right2 := new(p256.P256).Add(proof.Kq2, new(p256.P256).ScalarMult(comm.Xq2, proof.Challenge))
-	if left2.X.Cmp(right2.X) != 0 || left2.Y.Cmp(right2.Y) != 0 {
+	if !SigmaPedersenCheck(proof.Z, proof.Sq2, proof.Challenge, proof.Kq2,
+		comm.Xq2, proof.Params.GEC) {
 		return false
 	}
 
