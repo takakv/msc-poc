@@ -21,6 +21,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
+	"github.com/takakv/msc-poc/algebra"
 	"math"
 	"math/big"
 
@@ -55,6 +56,7 @@ of the Zero Knowledge Proof.
 */
 type BulletProof struct {
 	V                 *p256.P256
+	VEl               algebra.Element
 	A                 *p256.P256
 	S                 *p256.P256
 	T1                *p256.P256

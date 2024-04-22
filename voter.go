@@ -40,6 +40,14 @@ func castVote(pp PublicParameters) BallotData {
 	duration := time.Since(start)
 	fmt.Println("Prove time:", duration)
 
+	// Convert Bulletproof commitments to 'abstract' elements.
+	tmpX := bp1.V.X.Bytes()
+	tmpY := bp1.V.Y.Bytes()
+	bp1.VEl = pp.RPParams.GEC.I.Element().SetBytes(append(tmpX, tmpY...))
+	tmpX = bp2.V.X.Bytes()
+	tmpY = bp2.V.Y.Bytes()
+	bp2.VEl = pp.RPParams.GEC.I.Element().SetBytes(append(tmpX, tmpY...))
+
 	var bd BallotData
 	bd.ballot = ciphertext
 	bd.bpLower = bp1

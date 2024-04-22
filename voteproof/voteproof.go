@@ -8,7 +8,7 @@ import (
 	"math/big"
 )
 
-// GroupParameters describes a FF group.
+// GroupParameters describes a group in a prime field.
 type GroupParameters struct {
 	G algebra.Element // Group generator.
 	H algebra.Element // Generator whose logarithm to the base G is not known.
