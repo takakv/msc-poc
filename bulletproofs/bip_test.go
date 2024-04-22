@@ -18,7 +18,6 @@
 package bulletproofs
 
 import (
-	"fmt"
 	"github.com/takakv/msc-poc/algebra"
 	"math/big"
 	"testing"
@@ -36,8 +35,7 @@ func TestInnerProduct(t *testing.T) {
 
 	var SecP256k1Group = algebra.NewSecP256k1Group()
 
-	innerProductParams, _ := setupInnerProduct(nil, nil, nil, c, 4)
-	innerProductParamsSP, _ := setupInnerProductSP(nil, nil, nil, c, 4, SecP256k1Group)
+	innerProductParams, _ := setupInnerProduct(nil, nil, nil, c, 4, SecP256k1Group)
 
 	a = make([]*big.Int, innerProductParams.N)
 	a[0] = new(big.Int).SetInt64(2)
@@ -50,16 +48,10 @@ func TestInnerProduct(t *testing.T) {
 	b[2] = new(big.Int).SetInt64(10)
 	b[3] = new(big.Int).SetInt64(7)
 
-	commit := commitInnerProduct(innerProductParams.Gg, innerProductParams.Hh, a, b)
-	commitSP := commitInnerProductSP(innerProductParamsSP.Gg, innerProductParamsSP.Hh, a, b, SecP256k1Group)
-
-	fmt.Println()
+	commit := commitInnerProduct(innerProductParams.Gg, innerProductParams.Hh, a, b, innerProductParams.SP)
 
 	proof, _ := proveInnerProduct(a, b, commit, innerProductParams)
-	proofSP, _ := proveInnerProductSP(a, b, commitSP, innerProductParamsSP)
-
-	proof.Verify()
-	ok, _ := proofSP.VerifySP()
+	ok, _ := proof.Verify()
 	if ok != true {
 		t.Errorf("Assert failure: expected true, actual: %t", ok)
 	}
