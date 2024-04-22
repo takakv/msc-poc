@@ -19,9 +19,10 @@ package bulletproofs
 
 import (
 	"errors"
+	"github.com/ing-bank/zkrp/crypto/p256"
+	"github.com/takakv/msc-poc/algebra"
 	"math/big"
 
-	"github.com/ing-bank/zkrp/crypto/p256"
 	"github.com/ing-bank/zkrp/util/bn"
 )
 
@@ -164,6 +165,29 @@ func VectorECAdd(a, b []*p256.P256) ([]*p256.P256, error) {
 	i = 0
 	for i < n {
 		result[i] = new(p256.P256).Multiply(a[i], b[i])
+		i = i + 1
+	}
+	return result, nil
+}
+
+/*
+VectorECMul computes vector EC addition componentwisely.
+*/
+func VectorECAddSP(a, b []algebra.Element, SP algebra.Group) ([]algebra.Element, error) {
+	var (
+		result  []algebra.Element
+		i, n, m int64
+	)
+	n = int64(len(a))
+	m = int64(len(b))
+	if n != m {
+		return nil, errors.New("Size of first argument is different from size of second argument.")
+	}
+	result = make([]algebra.Element, n)
+	i = 0
+	for i < n {
+		// result[i] = new(p256.P256).Multiply(a[i], b[i])
+		result[i] = SP.Element().Add(a[i], b[i])
 		i = i + 1
 	}
 	return result, nil
