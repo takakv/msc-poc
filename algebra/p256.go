@@ -95,8 +95,12 @@ func (e *Point) Set(a Element) Element {
 }
 
 func (e *Point) SetBytes(b []byte) Element {
-	panic("not implemented")
-	return nil
+	xBytes := b[:32]
+	yBytes := b[32:]
+	e.val = new(p256.P256).SetInfinity()
+	e.val.X = new(big.Int).SetBytes(xBytes)
+	e.val.Y = new(big.Int).SetBytes(yBytes)
+	return e
 }
 
 func (e *Point) Scale(a Element, s *big.Int) Element {
