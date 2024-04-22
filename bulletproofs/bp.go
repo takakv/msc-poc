@@ -128,7 +128,7 @@ func Prove(secret *big.Int, params BulletProofSetupParams) (BulletProof, *big.In
 	S := commitVectorBig(sL, sR, rho, params.H, params.Gg, params.Hh, params.N, params.SP) // (47)
 
 	// Fiat-Shamir heuristic to compute challenges y and z, corresponds to    (49)
-	y, z, _ := HashBPSP(A, S)
+	y, z, _ := HashBP(A, S)
 
 	// ////////////////////////////////////////////////////////////////////////////
 	// Second phase: page 20
@@ -141,37 +141,37 @@ func Prove(secret *big.Int, params BulletProofSetupParams) (BulletProof, *big.In
 	*/
 	// compute t1: < aL - z.1^n, y^n . sR > + < sL, y^n . (aR + z . 1^n) >
 	vz, _ := VectorCopy(z, params.N)
-	vy := powerOf(y, params.N)
+	vy := powerOf(y, params.N, params.SP)
 
 	// aL - z.1^n
 	naL, _ := VectorConvertToBig(aL, params.N)
-	aLmvz, _ := VectorSub(naL, vz)
+	aLmvz, _ := VectorSub(naL, vz, params.SP.N())
 
 	// y^n .sR
-	ynsR, _ := VectorMul(vy, sR)
+	ynsR, _ := VectorMul(vy, sR, params.SP.N())
 
 	// scalar prod: < aL - z.1^n, y^n . sR >
-	sp1, _ := ScalarProduct(aLmvz, ynsR)
+	sp1, _ := ScalarProduct(aLmvz, ynsR, params.SP)
 
 	// scalar prod: < sL, y^n . (aR + z . 1^n) >
 	naR, _ := VectorConvertToBig(aR, params.N)
-	aRzn, _ := VectorAdd(naR, vz)
-	ynaRzn, _ := VectorMul(vy, aRzn)
+	aRzn, _ := VectorAdd(naR, vz, params.SP.N())
+	ynaRzn, _ := VectorMul(vy, aRzn, params.SP.N())
 
 	// Add z^2.2^n to the result
 	// z^2 . 2^n
-	p2n := powerOf(new(big.Int).SetInt64(2), params.N)
+	p2n := powerOf(new(big.Int).SetInt64(2), params.N, params.SP)
 	zsquared := bn.Multiply(z, z)
-	z22n, _ := VectorScalarMul(p2n, zsquared)
-	ynaRzn, _ = VectorAdd(ynaRzn, z22n)
-	sp2, _ := ScalarProduct(sL, ynaRzn)
+	z22n, _ := VectorScalarMul(p2n, zsquared, params.SP.N())
+	ynaRzn, _ = VectorAdd(ynaRzn, z22n, params.SP.N())
+	sp2, _ := ScalarProduct(sL, ynaRzn, params.SP)
 
 	// sp1 + sp2
 	t1 := bn.Add(sp1, sp2)
 	t1 = bn.Mod(t1, params.SP.N())
 
 	// compute t2: < sL, y^n . sR >
-	t2, _ := ScalarProduct(sL, ynsR)
+	t2, _ := ScalarProduct(sL, ynsR, params.SP)
 	t2 = bn.Mod(t2, params.SP.N())
 
 	// compute T1
@@ -181,26 +181,26 @@ func Prove(secret *big.Int, params BulletProofSetupParams) (BulletProof, *big.In
 	T2, _ := CommitG1SP(t2, tau2, params.H, params.SP) // (53)
 
 	// Fiat-Shamir heuristic to compute 'random' challenge x
-	x, _, _ := HashBPSP(T1, T2)
+	x, _, _ := HashBP(T1, T2)
 
 	// ////////////////////////////////////////////////////////////////////////////
 	// Third phase                                                              //
 	// ////////////////////////////////////////////////////////////////////////////
 
 	// compute bl                                                          // (58)
-	sLx, _ := VectorScalarMul(sL, x)
-	bl, _ := VectorAdd(aLmvz, sLx)
+	sLx, _ := VectorScalarMul(sL, x, params.SP.N())
+	bl, _ := VectorAdd(aLmvz, sLx, params.SP.N())
 
 	// compute br                                                          // (59)
 	// y^n . ( aR + z.1^n + sR.x )
-	sRx, _ := VectorScalarMul(sR, x)
-	aRzn, _ = VectorAdd(aRzn, sRx)
-	ynaRzn, _ = VectorMul(vy, aRzn)
+	sRx, _ := VectorScalarMul(sR, x, params.SP.N())
+	aRzn, _ = VectorAdd(aRzn, sRx, params.SP.N())
+	ynaRzn, _ = VectorMul(vy, aRzn, params.SP.N())
 	// y^n . ( aR + z.1^n sR.x ) + z^2 . 2^n
-	br, _ := VectorAdd(ynaRzn, z22n)
+	br, _ := VectorAdd(ynaRzn, z22n, params.SP.N())
 
 	// Compute t` = < bl, br >                                             // (60)
-	tprime, _ := ScalarProduct(bl, br)
+	tprime, _ := ScalarProduct(bl, br, params.SP)
 
 	// Compute taux = tau2 . x^2 + tau1 . x + z^2 . gamma                  // (61)
 	taux := bn.Multiply(tau2, bn.Multiply(x, x))
@@ -246,8 +246,8 @@ Verify returns true if and only if the proof is valid.
 func (proof *BulletProof) Verify() (bool, error) {
 	params := proof.Params
 	// Recover x, y, z using Fiat-Shamir heuristic
-	x, _, _ := HashBPSP(proof.T1, proof.T2)
-	y, z, _ := HashBPSP(proof.A, proof.S)
+	x, _, _ := HashBP(proof.T1, proof.T2)
+	y, z, _ := HashBP(proof.A, proof.S)
 
 	// Switch generators                                                   // (64)
 	hprime := updateGenerators(params.Hh, y, params.N, params.SP)
@@ -297,26 +297,26 @@ func (proof *BulletProof) Verify() (bool, error) {
 	// g^-z
 	mz := bn.Sub(params.SP.N(), z)
 	vmz, _ := VectorCopy(mz, params.N)
-	gpmz, _ := VectorExpSP(params.Gg, vmz, params.SP)
+	gpmz, _ := VectorExp(params.Gg, vmz, params.SP)
 
 	// z.y^n
 	vz, _ := VectorCopy(z, params.N)
-	vy := powerOf(y, params.N)
-	zyn, _ := VectorMul(vy, vz)
+	vy := powerOf(y, params.N, params.SP)
+	zyn, _ := VectorMul(vy, vz, params.SP.N())
 
-	p2n := powerOf(new(big.Int).SetInt64(2), params.N)
+	p2n := powerOf(new(big.Int).SetInt64(2), params.N, params.SP)
 	zsquared := bn.Multiply(z, z)
-	z22n, _ := VectorScalarMul(p2n, zsquared)
+	z22n, _ := VectorScalarMul(p2n, zsquared, params.SP.N())
 
 	// z.y^n + z^2.2^n
-	zynz22n, _ := VectorAdd(zyn, z22n)
+	zynz22n, _ := VectorAdd(zyn, z22n, params.SP.N())
 
 	// lP := new(p256.P256)
 	// lP.Add(ASx, gpmz)
 	lP := params.SP.Element().Add(ASx, gpmz)
 
 	// h'^(z.y^n + z^2.2^n)
-	hprimeexp, _ := VectorExpSP(hprime, zynz22n, params.SP)
+	hprimeexp, _ := VectorExp(hprime, zynz22n, params.SP)
 
 	lP.Add(lP, hprimeexp)
 
@@ -429,12 +429,12 @@ func (params *BulletProofSetupParams) delta(y, z *big.Int) *big.Int {
 
 	// < 1^n, y^n >
 	v1, _ := VectorCopy(new(big.Int).SetInt64(1), params.N)
-	vy := powerOf(y, params.N)
-	sp1y, _ := ScalarProduct(v1, vy)
+	vy := powerOf(y, params.N, params.SP)
+	sp1y, _ := ScalarProduct(v1, vy, params.SP)
 
 	// < 1^n, 2^n >
-	p2n := powerOf(new(big.Int).SetInt64(2), params.N)
-	sp12, _ := ScalarProduct(v1, p2n)
+	p2n := powerOf(new(big.Int).SetInt64(2), params.N, params.SP)
+	sp12, _ := ScalarProduct(v1, p2n, params.SP)
 
 	result = bn.Sub(z, z2)
 	result = bn.Mod(result, params.SP.N())

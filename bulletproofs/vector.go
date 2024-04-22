@@ -19,7 +19,6 @@ package bulletproofs
 
 import (
 	"errors"
-	"github.com/ing-bank/zkrp/crypto/p256"
 	"github.com/takakv/msc-poc/algebra"
 	"math/big"
 
@@ -63,7 +62,7 @@ func VectorConvertToBig(a []int64, n int64) ([]*big.Int, error) {
 /*
 VectorAdd computes vector addition componentwisely.
 */
-func VectorAdd(a, b []*big.Int) ([]*big.Int, error) {
+func VectorAdd(a, b []*big.Int, mod *big.Int) ([]*big.Int, error) {
 	var (
 		result  []*big.Int
 		i, n, m int64
@@ -77,7 +76,7 @@ func VectorAdd(a, b []*big.Int) ([]*big.Int, error) {
 	result = make([]*big.Int, n)
 	for i < n {
 		result[i] = bn.Add(a[i], b[i])
-		result[i] = bn.Mod(result[i], ORDER)
+		result[i] = bn.Mod(result[i], mod)
 		i = i + 1
 	}
 	return result, nil
@@ -86,7 +85,7 @@ func VectorAdd(a, b []*big.Int) ([]*big.Int, error) {
 /*
 VectorSub computes vector addition componentwisely.
 */
-func VectorSub(a, b []*big.Int) ([]*big.Int, error) {
+func VectorSub(a, b []*big.Int, mod *big.Int) ([]*big.Int, error) {
 	var (
 		result  []*big.Int
 		i, n, m int64
@@ -100,7 +99,7 @@ func VectorSub(a, b []*big.Int) ([]*big.Int, error) {
 	result = make([]*big.Int, n)
 	for i < n {
 		result[i] = bn.Sub(a[i], b[i])
-		result[i] = bn.Mod(result[i], ORDER)
+		result[i] = bn.Mod(result[i], mod)
 		i = i + 1
 	}
 	return result, nil
@@ -109,7 +108,7 @@ func VectorSub(a, b []*big.Int) ([]*big.Int, error) {
 /*
 VectorScalarMul computes vector scalar multiplication componentwisely.
 */
-func VectorScalarMul(a []*big.Int, b *big.Int) ([]*big.Int, error) {
+func VectorScalarMul(a []*big.Int, b *big.Int, mod *big.Int) ([]*big.Int, error) {
 	var (
 		result []*big.Int
 		i, n   int64
@@ -119,7 +118,7 @@ func VectorScalarMul(a []*big.Int, b *big.Int) ([]*big.Int, error) {
 	result = make([]*big.Int, n)
 	for i < n {
 		result[i] = bn.Multiply(a[i], b)
-		result[i] = bn.Mod(result[i], ORDER)
+		result[i] = bn.Mod(result[i], mod)
 		i = i + 1
 	}
 	return result, nil
@@ -128,7 +127,7 @@ func VectorScalarMul(a []*big.Int, b *big.Int) ([]*big.Int, error) {
 /*
 VectorMul computes vector multiplication componentwisely.
 */
-func VectorMul(a, b []*big.Int) ([]*big.Int, error) {
+func VectorMul(a, b []*big.Int, mod *big.Int) ([]*big.Int, error) {
 	var (
 		result  []*big.Int
 		i, n, m int64
@@ -142,7 +141,7 @@ func VectorMul(a, b []*big.Int) ([]*big.Int, error) {
 	result = make([]*big.Int, n)
 	for i < n {
 		result[i] = bn.Multiply(a[i], b[i])
-		result[i] = bn.Mod(result[i], ORDER)
+		result[i] = bn.Mod(result[i], mod)
 		i = i + 1
 	}
 	return result, nil
@@ -151,29 +150,7 @@ func VectorMul(a, b []*big.Int) ([]*big.Int, error) {
 /*
 VectorECMul computes vector EC addition componentwisely.
 */
-func VectorECAdd(a, b []*p256.P256) ([]*p256.P256, error) {
-	var (
-		result  []*p256.P256
-		i, n, m int64
-	)
-	n = int64(len(a))
-	m = int64(len(b))
-	if n != m {
-		return nil, errors.New("Size of first argument is different from size of second argument.")
-	}
-	result = make([]*p256.P256, n)
-	i = 0
-	for i < n {
-		result[i] = new(p256.P256).Multiply(a[i], b[i])
-		i = i + 1
-	}
-	return result, nil
-}
-
-/*
-VectorECMul computes vector EC addition componentwisely.
-*/
-func VectorECAddSP(a, b []algebra.Element, SP algebra.Group) ([]algebra.Element, error) {
+func VectorECAdd(a, b []algebra.Element, SP algebra.Group) ([]algebra.Element, error) {
 	var (
 		result  []algebra.Element
 		i, n, m int64

@@ -21,7 +21,6 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"errors"
-	"github.com/ing-bank/zkrp/crypto/p256"
 	"github.com/takakv/msc-poc/algebra"
 	"math/big"
 
@@ -32,7 +31,7 @@ import (
 /*
 powerOf returns a vector composed by powers of x.
 */
-func powerOf(x *big.Int, n int64) []*big.Int {
+func powerOf(x *big.Int, n int64, SP algebra.Group) []*big.Int {
 	var (
 		i      int64
 		result []*big.Int
@@ -43,43 +42,16 @@ func powerOf(x *big.Int, n int64) []*big.Int {
 	for i < n {
 		result[i] = current
 		current = bn.Multiply(current, x)
-		current = bn.Mod(current, ORDER)
+		current = bn.Mod(current, SP.N())
 		i = i + 1
 	}
 	return result
 }
 
 /*
-HashBPSP is responsible for the computing a Zp element given elements from GT and G1.
-*/
-func HashBPSP(A, S algebra.Element) (*big.Int, *big.Int, error) {
-
-	digest1 := sha256.New()
-	var buffer bytes.Buffer
-	buffer.WriteString(A.String())
-	buffer.WriteString(S.String())
-	digest1.Write(buffer.Bytes())
-	output1 := digest1.Sum(nil)
-	tmp1 := output1[0:]
-	result1 := new(big.Int).SetBytes(tmp1)
-
-	digest2 := sha256.New()
-	var buffer2 bytes.Buffer
-	buffer2.WriteString(A.String())
-	buffer2.WriteString(S.String())
-	buffer2.WriteString(result1.String())
-	digest2.Write(buffer.Bytes())
-	output2 := digest2.Sum(nil)
-	tmp2 := output2[0:]
-	result2 := new(big.Int).SetBytes(tmp2)
-
-	return result1, result2, nil
-}
-
-/*
 HashBP is responsible for the computing a Zp element given elements from GT and G1.
 */
-func HashBP(A, S *p256.P256) (*big.Int, *big.Int, error) {
+func HashBP(A, S algebra.Element) (*big.Int, *big.Int, error) {
 
 	digest1 := sha256.New()
 	var buffer bytes.Buffer
@@ -104,9 +76,9 @@ func HashBP(A, S *p256.P256) (*big.Int, *big.Int, error) {
 }
 
 /*
-VectorExpSP computes Prod_i^n{a[i]^b[i]}.
+VectorExp computes Prod_i^n{a[i]^b[i]}.
 */
-func VectorExpSP(a []algebra.Element, b []*big.Int, SP algebra.Group) (algebra.Element, error) {
+func VectorExp(a []algebra.Element, b []*big.Int, SP algebra.Group) (algebra.Element, error) {
 	var (
 		result  algebra.Element
 		i, n, m int64
@@ -128,31 +100,9 @@ func VectorExpSP(a []algebra.Element, b []*big.Int, SP algebra.Group) (algebra.E
 }
 
 /*
-VectorExp computes Prod_i^n{a[i]^b[i]}.
-*/
-func VectorExp(a []*p256.P256, b []*big.Int) (*p256.P256, error) {
-	var (
-		result  *p256.P256
-		i, n, m int64
-	)
-	n = int64(len(a))
-	m = int64(len(b))
-	if n != m {
-		return nil, errors.New("Size of first argument is different from size of second argument.")
-	}
-	i = 0
-	result = new(p256.P256).SetInfinity()
-	for i < n {
-		result.Multiply(result, new(p256.P256).ScalarMult(a[i], b[i]))
-		i = i + 1
-	}
-	return result, nil
-}
-
-/*
 ScalarProduct return the inner product between a and b.
 */
-func ScalarProduct(a, b []*big.Int) (*big.Int, error) {
+func ScalarProduct(a, b []*big.Int, SP algebra.Group) (*big.Int, error) {
 	var (
 		result  *big.Int
 		i, n, m int64
@@ -167,7 +117,7 @@ func ScalarProduct(a, b []*big.Int) (*big.Int, error) {
 	for i < n {
 		ab := bn.Multiply(a[i], b[i])
 		result.Add(result, ab)
-		result = bn.Mod(result, ORDER)
+		result = bn.Mod(result, SP.N())
 		i = i + 1
 	}
 	return result, nil
