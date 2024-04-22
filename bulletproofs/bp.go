@@ -25,7 +25,6 @@ import (
 	"math"
 	"math/big"
 
-	"github.com/ing-bank/zkrp/crypto/p256"
 	"github.com/ing-bank/zkrp/util/bn"
 	. "github.com/takakv/msc-poc/util"
 )
@@ -82,12 +81,7 @@ func Setup(b int64, SP algebra.Group) (BulletProofSetupParams, error) {
 	params := BulletProofSetupParams{}
 	params.SP = SP
 	params.G = SP.Element().BaseScale(big.NewInt(1))
-
-	tmp, _ := p256.MapToGroup(SEEDH)
-	tmpX := tmp.X.Bytes()
-	tmpY := tmp.Y.Bytes()
-	params.H = SP.Element().SetBytes(append(tmpX, tmpY...))
-
+	params.H, _ = SP.Element().MapToGroup(SEEDH)
 	params.N = int64(math.Log2(float64(b)))
 	if !IsPowerOfTwo(params.N) {
 		return BulletProofSetupParams{}, fmt.Errorf("range end is a power of 2, but it's exponent should also be. Exponent: %d", params.N)
@@ -98,14 +92,8 @@ func Setup(b int64, SP algebra.Group) (BulletProofSetupParams, error) {
 	params.Gg = make([]algebra.Element, params.N)
 	params.Hh = make([]algebra.Element, params.N)
 	for i := int64(0); i < params.N; i++ {
-		tmp, _ = p256.MapToGroup(SEEDH + "g" + fmt.Sprint(i))
-		tmpX = tmp.X.Bytes()
-		tmpY = tmp.Y.Bytes()
-		params.Gg[i] = SP.Element().SetBytes(append(tmpX, tmpY...))
-		tmp, _ = p256.MapToGroup(SEEDH + "h" + fmt.Sprint(i))
-		tmpX = tmp.X.Bytes()
-		tmpY = tmp.Y.Bytes()
-		params.Hh[i] = SP.Element().SetBytes(append(tmpX, tmpY...))
+		params.Gg[i], _ = SP.Element().MapToGroup(SEEDH + "g" + fmt.Sprint(i))
+		params.Hh[i], _ = SP.Element().MapToGroup(SEEDH + "h" + fmt.Sprint(i))
 	}
 	return params, nil
 }
@@ -124,19 +112,19 @@ func Prove(secret *big.Int, params BulletProofSetupParams) (BulletProof, *big.In
 	// ////////////////////////////////////////////////////////////////////////////
 
 	// commitment to v and gamma
-	gamma, _ := rand.Int(rand.Reader, ORDER)
+	gamma, _ := rand.Int(rand.Reader, params.SP.N())
 	V, _ := CommitG1SP(secret, gamma, params.H, params.SP)
 
 	// aL, aR and commitment: (A, alpha)
 	aL, _ := Decompose(secret, 2, params.N)                                               // (41)
 	aR, _ := computeAR(aL)                                                                // (42)
-	alpha, _ := rand.Int(rand.Reader, ORDER)                                              // (43)
+	alpha, _ := rand.Int(rand.Reader, params.SP.N())                                      // (43)
 	A := commitVector(aL, aR, alpha, params.H, params.Gg, params.Hh, params.N, params.SP) // (44)
 
 	// sL, sR and commitment: (S, rho)                                     // (45)
-	sL := sampleRandomVector(params.N)
-	sR := sampleRandomVector(params.N)
-	rho, _ := rand.Int(rand.Reader, ORDER)                                                 // (46)
+	sL := sampleRandomVector(params.N, params.SP)
+	sR := sampleRandomVector(params.N, params.SP)
+	rho, _ := rand.Int(rand.Reader, params.SP.N())                                         // (46)
 	S := commitVectorBig(sL, sR, rho, params.H, params.Gg, params.Hh, params.N, params.SP) // (47)
 
 	// Fiat-Shamir heuristic to compute challenges y and z, corresponds to    (49)
@@ -145,8 +133,8 @@ func Prove(secret *big.Int, params BulletProofSetupParams) (BulletProof, *big.In
 	// ////////////////////////////////////////////////////////////////////////////
 	// Second phase: page 20
 	// ////////////////////////////////////////////////////////////////////////////
-	tau1, _ := rand.Int(rand.Reader, ORDER) // (52)
-	tau2, _ := rand.Int(rand.Reader, ORDER) // (52)
+	tau1, _ := rand.Int(rand.Reader, params.SP.N()) // (52)
+	tau2, _ := rand.Int(rand.Reader, params.SP.N()) // (52)
 
 	/*
 	   The paper does not describe how to compute t1 and t2.
@@ -180,11 +168,11 @@ func Prove(secret *big.Int, params BulletProofSetupParams) (BulletProof, *big.In
 
 	// sp1 + sp2
 	t1 := bn.Add(sp1, sp2)
-	t1 = bn.Mod(t1, ORDER)
+	t1 = bn.Mod(t1, params.SP.N())
 
 	// compute t2: < sL, y^n . sR >
 	t2, _ := ScalarProduct(sL, ynsR)
-	t2 = bn.Mod(t2, ORDER)
+	t2 = bn.Mod(t2, params.SP.N())
 
 	// compute T1
 	T1, _ := CommitG1SP(t1, tau1, params.H, params.SP) // (53)
@@ -218,12 +206,12 @@ func Prove(secret *big.Int, params BulletProofSetupParams) (BulletProof, *big.In
 	taux := bn.Multiply(tau2, bn.Multiply(x, x))
 	taux = bn.Add(taux, bn.Multiply(tau1, x))
 	taux = bn.Add(taux, bn.Multiply(bn.Multiply(z, z), gamma))
-	taux = bn.Mod(taux, ORDER)
+	taux = bn.Mod(taux, params.SP.N())
 
 	// Compute mu = alpha + rho.x                                          // (62)
 	mu := bn.Multiply(rho, x)
 	mu = bn.Add(mu, alpha)
-	mu = bn.Mod(mu, ORDER)
+	mu = bn.Mod(mu, params.SP.N())
 
 	// Inner Product over (g, h', P.h^-mu, tprime)
 	hprime := updateGenerators(params.Hh, y, params.N, params.SP)
@@ -273,9 +261,9 @@ func (proof *BulletProof) Verify() (bool, error) {
 
 	// Compute right hand side
 	z2 := bn.Multiply(z, z)
-	z2 = bn.Mod(z2, ORDER)
+	z2 = bn.Mod(z2, params.SP.N())
 	x2 := bn.Multiply(x, x)
-	x2 = bn.Mod(x2, ORDER)
+	x2 = bn.Mod(x2, params.SP.N())
 
 	// rhs := new(p256.P256).ScalarMult(proof.V, z2)
 	rhs := params.SP.Element().Scale(proof.V, z2)
@@ -316,7 +304,7 @@ func (proof *BulletProof) Verify() (bool, error) {
 	ASx := params.SP.Element().Add(proof.A, Sx)
 
 	// g^-z
-	mz := bn.Sub(ORDER, z)
+	mz := bn.Sub(params.SP.N(), z)
 	vmz, _ := VectorCopy(mz, params.N)
 	gpmz, _ := VectorExpSP(params.Gg, vmz, params.SP)
 
@@ -368,10 +356,10 @@ func (proof *BulletProof) Verify() (bool, error) {
 /*
 SampleRandomVector generates a vector composed by random big numbers.
 */
-func sampleRandomVector(N int64) []*big.Int {
+func sampleRandomVector(N int64, SP algebra.Group) []*big.Int {
 	s := make([]*big.Int, N)
 	for i := int64(0); i < N; i++ {
-		s[i], _ = rand.Int(rand.Reader, ORDER)
+		s[i], _ = rand.Int(rand.Reader, SP.N())
 	}
 	return s
 }
@@ -390,7 +378,7 @@ func updateGenerators(Hh []algebra.Element, y *big.Int, N int64, SP algebra.Grou
 	// Compute h'                                                          // (64)
 	hprime := make([]algebra.Element, N)
 	// Switch generators
-	yinv := bn.ModInverse(y, ORDER)
+	yinv := bn.ModInverse(y, SP.N())
 	expy := yinv
 	hprime[0] = Hh[0]
 	i = 1
@@ -450,9 +438,9 @@ func (params *BulletProofSetupParams) delta(y, z *big.Int) *big.Int {
 	)
 	// delta(y,z) = (z-z^2) . < 1^n, y^n > - z^3 . < 1^n, 2^n >
 	z2 := bn.Multiply(z, z)
-	z2 = bn.Mod(z2, ORDER)
+	z2 = bn.Mod(z2, params.SP.N())
 	z3 := bn.Multiply(z2, z)
-	z3 = bn.Mod(z3, ORDER)
+	z3 = bn.Mod(z3, params.SP.N())
 
 	// < 1^n, y^n >
 	v1, _ := VectorCopy(new(big.Int).SetInt64(1), params.N)
@@ -464,11 +452,11 @@ func (params *BulletProofSetupParams) delta(y, z *big.Int) *big.Int {
 	sp12, _ := ScalarProduct(v1, p2n)
 
 	result = bn.Sub(z, z2)
-	result = bn.Mod(result, ORDER)
+	result = bn.Mod(result, params.SP.N())
 	result = bn.Multiply(result, sp1y)
-	result = bn.Mod(result, ORDER)
+	result = bn.Mod(result, params.SP.N())
 	result = bn.Sub(result, bn.Multiply(z3, sp12))
-	result = bn.Mod(result, ORDER)
+	result = bn.Mod(result, params.SP.N())
 
 	return result
 }

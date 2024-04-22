@@ -139,6 +139,10 @@ func (e *ModPElement) IsIdentity() bool {
 	return e.val.Cmp(big.NewInt(1)) == 0
 }
 
+func (e *ModPElement) MapToGroup(s string) (Element, error) {
+	panic("not implemented")
+}
+
 func NewModPGroup(name string, fieldOrder, generator string) Group {
 	repr := strings.Join(strings.Fields(fieldOrder), "")
 

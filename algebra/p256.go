@@ -122,6 +122,14 @@ func (e *Point) FieldOrder() *big.Int {
 	return e.curve.fieldOrder
 }
 
+func (e *Point) MapToGroup(s string) (Element, error) {
+	tmp, _ := p256.MapToGroup(s)
+	tmpX := tmp.X.Bytes()
+	tmpY := tmp.Y.Bytes()
+	e.curve.Element().SetBytes(append(tmpX, tmpY...))
+	return e, nil
+}
+
 func (e *Point) String() string {
 	return e.val.String()
 }
