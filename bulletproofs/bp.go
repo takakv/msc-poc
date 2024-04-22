@@ -273,26 +273,17 @@ func (proof *BulletProof) Verify() (bool, error) {
 	// gdelta := new(p256.P256).ScalarBaseMult(delta)
 	gdelta := params.SP.Element().BaseScale(delta)
 
-	// rhs.Multiply(rhs, gdelta)
-	rhs = params.SP.Element().Add(rhs, gdelta)
+	rhs.Add(rhs, gdelta)
 
-	// T1x := new(p256.P256).ScalarMult(proof.T1, x)
 	T1x := params.SP.Element().Scale(proof.T1, x)
-	// T2x2 := new(p256.P256).ScalarMult(proof.T2, x2)
 	T2x2 := params.SP.Element().Scale(proof.T2, x2)
 
-	// rhs.Multiply(rhs, T1x)
-	rhs = params.SP.Element().Add(rhs, T1x)
-	// rhs.Multiply(rhs, T2x2)
-	rhs = params.SP.Element().Add(rhs, T2x2)
+	rhs.Add(rhs, T1x)
+	rhs.Add(rhs, T2x2)
 
-	// Subtract lhs and rhs and compare with poitn at infinity
-	// lhs.Neg(lhs)
-	lhs = params.SP.Element().Negate(lhs)
-	// rhs.Multiply(rhs, lhs)
-	rhs = params.SP.Element().Add(rhs, lhs)
-	// c65 := rhs.IsZero() // Condition (65), page 20, from eprint version
-	c65 := rhs.IsIdentity()
+	// Subtract lhs and rhs and compare with point at infinity
+	rhs.Subtract(rhs, lhs)
+	c65 := rhs.IsIdentity() // Condition (65), page 20, from eprint version
 
 	// Compute P - lhs  #################### Condition (66) ######################
 
@@ -332,17 +323,11 @@ func (proof *BulletProof) Verify() (bool, error) {
 	// Compute P - rhs  #################### Condition (67) ######################
 
 	// h^mu
-	// rP := new(p256.P256).ScalarMult(params.H, proof.Mu)
 	rP := params.SP.Element().Scale(params.H, proof.Mu)
-	// rP.Multiply(rP, proof.Commit)
-	rP = params.SP.Element().Add(rP, proof.Commit)
+	rP.Add(rP, proof.Commit)
 
-	// Subtract lhs and rhs and compare with poitn at infinity
-	// lP = lP.Neg(lP)
-	lP = params.SP.Element().Negate(lP)
-	// rP.Add(rP, lP)
-	rP = params.SP.Element().Add(rP, lP)
-	// c67 := rP.IsZero()
+	// Subtract lhs and rhs and compare with point at infinity
+	rP.Subtract(rP, lP)
 	c67 := rP.IsIdentity()
 
 	// Verify Inner Product Proof ################################################
@@ -418,7 +403,7 @@ func commitVectorBig(aL, aR []*big.Int, alpha *big.Int, H algebra.Element, g, h 
 }
 
 /*
-Commitvector computes a commitment to the bit of the secret.
+commitVector computes a commitment to the bit of the secret.
 */
 func commitVector(aL, aR []int64, alpha *big.Int, H algebra.Element, g, h []algebra.Element, n int64, SP algebra.Group) algebra.Element {
 	// Compute h^alpha.vg^aL.vh^aR
@@ -426,8 +411,8 @@ func commitVector(aL, aR []int64, alpha *big.Int, H algebra.Element, g, h []alge
 	for i := int64(0); i < n; i++ {
 		gaL := SP.Element().Scale(g[i], big.NewInt(aL[i]))
 		haR := SP.Element().Scale(h[i], big.NewInt(aR[i]))
-		R = SP.Element().Add(R, gaL)
-		R = SP.Element().Add(R, haR)
+		R.Add(R, gaL)
+		R.Add(R, haR)
 	}
 	return R
 }
