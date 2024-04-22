@@ -36,7 +36,7 @@ type ProofParams struct {
 // VerCommitments holds the commitments needed to verify the correctness proof.
 type VerCommitments struct {
 	Y   algebra.Element // First component of an ElGamal ciphertext.
-	Xp  algebra.Element // Second component of en ElGamal ciphertext.
+	Xp  algebra.Element // Second component of an ElGamal ciphertext.
 	Xq1 algebra.Element // Pedersen commitment to a secret.
 	Xq2 algebra.Element // Pedersen commitment to a secret.
 }
