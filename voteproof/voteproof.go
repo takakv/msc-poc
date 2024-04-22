@@ -75,7 +75,6 @@ type SigmaProof struct {
 func Setup(lenSecret uint8, lenChallenge uint16, fieldSize uint16,
 	rangeLo uint16, rangeHi uint16,
 	AP AlgebraicParameters) ProofParams {
-
 	params := ProofParams{}
 	params.bx = lenSecret
 	params.bc = lenChallenge
@@ -156,6 +155,11 @@ func Prove(secret *big.Int, rp *big.Int, rq1, rq2 *big.Int, params ProofParams) 
 }
 
 func (proof *SigmaProof) Verify(comm VerCommitments) bool {
+	challenge := HashProof(proof.W, proof.Kp, proof.Kq1, proof.Kq2)
+	if challenge.Cmp(proof.Challenge) != 0 {
+		return false
+	}
+
 	l := proof.Params.GFF.I.Element().BaseScale(proof.Sp)
 	r := proof.Params.GFF.I.Element().Scale(comm.Y, proof.Challenge)
 	r = proof.Params.GFF.I.Element().Add(r, proof.W)
