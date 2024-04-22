@@ -145,20 +145,14 @@ func setupInnerProductSP(H algebra.Element, g, h []algebra.Element, c *big.Int, 
 		params.N = N
 	}
 	if H == nil {
-		tmp, _ := p256.MapToGroup(SEEDH)
-		tmpX := tmp.X.Bytes()
-		tmpY := tmp.Y.Bytes()
-		params.H = SP.Element().SetBytes(append(tmpX, tmpY...))
+		params.H, _ = SP.Element().MapToGroup(SEEDH)
 	} else {
 		params.H = H
 	}
 	if g == nil {
 		params.Gg = make([]algebra.Element, params.N)
 		for i := int64(0); i < params.N; i++ {
-			tmp, _ := p256.MapToGroup(SEEDH + "g" + fmt.Sprint(i))
-			tmpX := tmp.X.Bytes()
-			tmpY := tmp.Y.Bytes()
-			params.Gg[i] = SP.Element().SetBytes(append(tmpX, tmpY...))
+			params.Gg[i], _ = SP.Element().MapToGroup(SEEDH + "g" + fmt.Sprint(i))
 		}
 	} else {
 		params.Gg = g
@@ -166,21 +160,13 @@ func setupInnerProductSP(H algebra.Element, g, h []algebra.Element, c *big.Int, 
 	if h == nil {
 		params.Hh = make([]algebra.Element, params.N)
 		for i := int64(0); i < params.N; i++ {
-			tmp, _ := p256.MapToGroup(SEEDH + "h" + fmt.Sprint(i))
-			tmpX := tmp.X.Bytes()
-			tmpY := tmp.Y.Bytes()
-			params.Hh[i] = SP.Element().SetBytes(append(tmpX, tmpY...))
+			params.Hh[i], _ = SP.Element().MapToGroup(SEEDH + "h" + fmt.Sprint(i))
 		}
 	} else {
 		params.Hh = h
 	}
 	params.Cc = c
-	// params.Uu, _ = p256.MapToGroup(SEEDU)
-	tmp, _ := p256.MapToGroup(SEEDU)
-	tmpX := tmp.X.Bytes()
-	tmpY := tmp.Y.Bytes()
-	params.Uu = SP.Element().SetBytes(append(tmpX, tmpY...))
-	// params.P = new(p256.P256).SetInfinity()
+	params.Uu, _ = SP.Element().MapToGroup(SEEDU)
 	params.P = SP.Identity()
 	params.SP = SP
 

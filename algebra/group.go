@@ -24,6 +24,8 @@ type Element interface {
 
 	String() string
 
+	MapToGroup(s string) (Element, error)
+
 	IsIdentity() bool
 }
 
