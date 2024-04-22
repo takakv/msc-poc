@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"github.com/0xdecaf/zkrp/crypto/p256"
 	"github.com/takakv/msc-poc/algebra"
 	"github.com/takakv/msc-poc/bulletproofs"
 	"github.com/takakv/msc-poc/voteproof"
@@ -68,7 +67,7 @@ func setup() PublicParameters {
 	// W.l.o.g. this secret is not known to any one party.
 	elGamalPrivateKey := big.NewInt(13)
 
-	bpParams, _ := bulletproofs.Setup(65536)
+	bpParams, _ := bulletproofs.Setup(65536, SecP256k1Group)
 
 	var fieldGroupParams voteproof.GroupParameters
 	fieldGroupParams.I = RFC3526ModPGroup3072
@@ -77,15 +76,12 @@ func setup() PublicParameters {
 	fieldGroupParams.G = fieldGroupParams.I.Generator()
 	fieldGroupParams.H = fieldGroupParams.I.Element().BaseScale(elGamalPrivateKey)
 
-	tmp1 := (*p256.P256)(bpParams.H).X.Bytes()
-	tmp2 := (*p256.P256)(bpParams.H).Y.Bytes()
-
 	var curveGroupParams voteproof.GroupParameters
 	curveGroupParams.I = SecP256k1Group
 	curveGroupParams.F = fieldGroupParams.I.P()
 	curveGroupParams.N = curveGroupParams.I.N()
 	curveGroupParams.G = curveGroupParams.I.Generator()
-	curveGroupParams.H = curveGroupParams.I.Element().SetBytes(append(tmp1, tmp2...))
+	curveGroupParams.H = bpParams.H
 
 	var algebraicParams voteproof.AlgebraicParameters
 	algebraicParams.GFF = fieldGroupParams

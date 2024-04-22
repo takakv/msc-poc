@@ -57,7 +57,6 @@ the verification of the Zero Knowledge Proof.
 */
 type BulletProof struct {
 	V                 algebra.Element
-	VEl               algebra.Element
 	A                 algebra.Element
 	S                 algebra.Element
 	T1                algebra.Element
