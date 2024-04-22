@@ -61,12 +61,9 @@ func (e *Point) check(a Element) *Point {
 }
 
 func (e *Point) Add(a Element, b Element) Element {
-	if a.Equal(b) {
-		return e.BaseScale(big.NewInt(2))
-	}
 	ca := e.check(a)
 	cb := e.check(b)
-	e.val = new(p256.P256).Add(ca.val, cb.val)
+	e.val = new(p256.P256).Multiply(ca.val, cb.val)
 	return e
 }
 
