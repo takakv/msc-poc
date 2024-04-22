@@ -2,6 +2,7 @@ package algebra
 
 import (
 	"fmt"
+	"math/big"
 	"testing"
 )
 
@@ -113,6 +114,8 @@ var RFC3526ModPGroup8192 = NewModPGroup(
 		60C980DD 98EDD3DF FFFFFFFF FFFFFFFF`,
 	"2")
 
+var SecP256k1Group = NewSecP256k1Group()
+
 func TestNewElements(t *testing.T) {
 	els := []struct {
 		name string
@@ -123,7 +126,7 @@ func TestNewElements(t *testing.T) {
 		{"random", func(g Group) Element { return g.Random() }},
 	}
 
-	g := RFC3526ModPGroup3072
+	g := SecP256k1Group // RFC3526ModPGroup3072
 	for _, e := range els {
 		t.Run(fmt.Sprintf("%s-%s", "ModPGroup", e.name), func(t *testing.T) {
 			x := e.el(g)
@@ -135,21 +138,35 @@ func TestNewElements(t *testing.T) {
 }
 
 func TestMath(t *testing.T) {
-	g := RFC3526ModPGroup3072
-	t.Run("ModPGroup", func(t *testing.T) {
-		z := g.Identity()
-		x := g.Random()
-		y := g.Random()
-		z.Add(x, y)
-		z.Subtract(z, y)
-		if !z.Equal(x) {
-			t.Error("op-invop")
-		}
-	})
+	g := SecP256k1Group // RFC3526ModPGroup3072
+
+	a := g.Element().BaseScale(big.NewInt(2))
+	b := g.Element().Add(g.Generator(), g.Generator())
+	ok := a.Equal(b)
+	if ok != true {
+		t.Error("doubling error")
+	}
+
+	a = g.Element().Add(a, g.Generator())
+	b = g.Element().BaseScale(big.NewInt(3))
+	ok = a.Equal(b)
+	if ok != true {
+		t.Error("error in adding or scaling")
+	}
+
+	e := g.Identity()
+	r1 := g.Random()
+	r2 := g.Random()
+	e.Add(r1, r2)
+	e.Subtract(e, r2)
+	ok = e.Equal(r1)
+	if ok != true {
+		t.Error("error in subtracting")
+	}
 }
 
 func TestSet(t *testing.T) {
-	g := RFC3526ModPGroup3072
+	g := SecP256k1Group // RFC3526ModPGroup3072
 	t.Run("ModPGroup", func(t *testing.T) {
 		x := g.Random()
 		z := g.Identity()
