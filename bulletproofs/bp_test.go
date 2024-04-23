@@ -91,12 +91,13 @@ func proveAndVerifyRange(x *big.Int, params BulletProofSetupParams) bool {
 
 /* TODO: reimplement and test marshalling
 func TestJsonEncodeDecode(t *testing.T) {
-	params, _ := Setup(MAX_RANGE_END, algebra.NewSecP256k1Group())
+	params, _ := Setup(MAX_RANGE_END, group.NewSecP256k1Group())
 	proof, _, _ := Prove(new(big.Int).SetInt64(18), params)
 	jsonEncoded, err := json.Marshal(proof)
 	if err != nil {
 		t.Fatal("encode error:", err)
 	}
+	fmt.Println(string(jsonEncoded))
 
 	// network transfer takes place here
 

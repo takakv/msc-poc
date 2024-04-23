@@ -2,6 +2,7 @@ package group
 
 import (
 	"crypto/rand"
+	"encoding/json"
 	"github.com/ing-bank/zkrp/crypto/p256"
 	"math/big"
 )
@@ -139,6 +140,10 @@ func (e *Point) IsIdentity() bool {
 		return true
 	}
 	return e.val.X.Cmp(big.NewInt(0)) == 0 && e.val.Y.Cmp(big.NewInt(0)) == 0
+}
+
+func (e *Point) MarshalJSON() ([]byte, error) {
+	return json.Marshal(e.val)
 }
 
 func NewSecP256k1Group() Group {
