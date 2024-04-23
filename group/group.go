@@ -1,6 +1,8 @@
 package group
 
-import "math/big"
+import (
+	"math/big"
+)
 
 // Element represents a group element.
 type Element interface {
