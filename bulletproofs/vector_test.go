@@ -18,7 +18,7 @@
 package bulletproofs
 
 import (
-	"github.com/takakv/msc-poc/algebra"
+	"github.com/takakv/msc-poc/group"
 	"math/big"
 	"testing"
 
@@ -69,7 +69,7 @@ func TestVectorAdd(t *testing.T) {
 	var (
 		a, b []*big.Int
 	)
-	var SecP256k1Group = algebra.NewSecP256k1Group()
+	var SecP256k1Group = group.NewSecP256k1Group()
 
 	a = make([]*big.Int, 3)
 	b = make([]*big.Int, 3)
@@ -95,7 +95,7 @@ func TestVectorSub(t *testing.T) {
 	var (
 		a, b []*big.Int
 	)
-	var SecP256k1Group = algebra.NewSecP256k1Group()
+	var SecP256k1Group = group.NewSecP256k1Group()
 
 	a = make([]*big.Int, 3)
 	b = make([]*big.Int, 3)
@@ -121,7 +121,7 @@ func TestVectorMul(t *testing.T) {
 	var (
 		a, b []*big.Int
 	)
-	var SecP256k1Group = algebra.NewSecP256k1Group()
+	var SecP256k1Group = group.NewSecP256k1Group()
 
 	a = make([]*big.Int, 3)
 	b = make([]*big.Int, 3)

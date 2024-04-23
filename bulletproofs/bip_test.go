@@ -18,7 +18,7 @@
 package bulletproofs
 
 import (
-	"github.com/takakv/msc-poc/algebra"
+	"github.com/takakv/msc-poc/group"
 	"math/big"
 	"testing"
 )
@@ -33,7 +33,7 @@ func TestInnerProduct(t *testing.T) {
 	)
 	c := new(big.Int).SetInt64(142)
 
-	var SecP256k1Group = algebra.NewSecP256k1Group()
+	var SecP256k1Group = group.NewSecP256k1Group()
 
 	innerProductParams, _ := setupInnerProduct(nil, nil, nil, c, 4, SecP256k1Group)
 

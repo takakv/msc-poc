@@ -19,7 +19,7 @@ package util
 
 import (
 	"crypto/sha256"
-	"github.com/takakv/msc-poc/algebra"
+	"github.com/takakv/msc-poc/group"
 	"math/big"
 
 	"github.com/ing-bank/zkrp/crypto/bn256"
@@ -75,7 +75,7 @@ func CommitG1(x, r *big.Int, h *p256.P256) (*p256.P256, error) {
 	return C, nil
 }
 
-func CommitG1SP(x, r *big.Int, h algebra.Element, SP algebra.Group) (algebra.Element, error) {
+func CommitG1SP(x, r *big.Int, h group.Element, SP group.Group) (group.Element, error) {
 	// var C = new(p256.P256).ScalarBaseMult(x)
 	C := SP.Element().BaseScale(x)
 	// Hr := new(p256.P256).ScalarMult(h, r)

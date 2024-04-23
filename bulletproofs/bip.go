@@ -21,7 +21,7 @@ import (
 	"crypto/sha256"
 	"errors"
 	"fmt"
-	"github.com/takakv/msc-poc/algebra"
+	"github.com/takakv/msc-poc/group"
 	"math/big"
 
 	"github.com/ing-bank/zkrp/util/bn"
@@ -37,12 +37,12 @@ commitments.
 type InnerProductParams struct {
 	N  int64
 	Cc *big.Int
-	Uu algebra.Element
-	H  algebra.Element
-	Gg []algebra.Element
-	Hh []algebra.Element
-	P  algebra.Element
-	SP algebra.Group
+	Uu group.Element
+	H  group.Element
+	Gg []group.Element
+	Hh []group.Element
+	P  group.Element
+	SP group.Group
 }
 
 /*
@@ -50,12 +50,12 @@ InnerProductProof contains the elements used to verify the Inner Product Proof.
 */
 type InnerProductProof struct {
 	N      int64
-	Ls     []algebra.Element
-	Rs     []algebra.Element
-	U      algebra.Element
-	P      algebra.Element
-	Gg     algebra.Element
-	Hh     algebra.Element
+	Ls     []group.Element
+	Rs     []group.Element
+	U      group.Element
+	P      group.Element
+	Gg     group.Element
+	Hh     group.Element
 	A      *big.Int
 	B      *big.Int
 	Params InnerProductParams
@@ -65,7 +65,7 @@ type InnerProductProof struct {
 SetupInnerProduct is responsible for computing the inner product basic parameters that are common to both
 ProveInnerProduct and Verify algorithms.
 */
-func setupInnerProduct(H algebra.Element, g, h []algebra.Element, c *big.Int, N int64, SP algebra.Group) (InnerProductParams, error) {
+func setupInnerProduct(H group.Element, g, h []group.Element, c *big.Int, N int64, SP group.Group) (InnerProductParams, error) {
 	var params InnerProductParams
 
 	if N <= 0 {
@@ -79,7 +79,7 @@ func setupInnerProduct(H algebra.Element, g, h []algebra.Element, c *big.Int, N 
 		params.H = H
 	}
 	if g == nil {
-		params.Gg = make([]algebra.Element, params.N)
+		params.Gg = make([]group.Element, params.N)
 		for i := int64(0); i < params.N; i++ {
 			params.Gg[i], _ = SP.Element().MapToGroup(SEEDH + "g" + fmt.Sprint(i))
 		}
@@ -87,7 +87,7 @@ func setupInnerProduct(H algebra.Element, g, h []algebra.Element, c *big.Int, N 
 		params.Gg = g
 	}
 	if h == nil {
-		params.Hh = make([]algebra.Element, params.N)
+		params.Hh = make([]group.Element, params.N)
 		for i := int64(0); i < params.N; i++ {
 			params.Hh[i], _ = SP.Element().MapToGroup(SEEDH + "h" + fmt.Sprint(i))
 		}
@@ -105,12 +105,12 @@ func setupInnerProduct(H algebra.Element, g, h []algebra.Element, c *big.Int, N 
 /*
 proveInnerProduct calculates the Zero Knowledge Proof for the Inner Product argument.
 */
-func proveInnerProduct(a, b []*big.Int, P algebra.Element, params InnerProductParams) (InnerProductProof, error) {
+func proveInnerProduct(a, b []*big.Int, P group.Element, params InnerProductParams) (InnerProductProof, error) {
 	var (
 		proof InnerProductProof
 		n, m  int64
-		Ls    []algebra.Element
-		Rs    []algebra.Element
+		Ls    []group.Element
+		Rs    []group.Element
 	)
 
 	n = int64(len(a))
@@ -140,12 +140,12 @@ func proveInnerProduct(a, b []*big.Int, P algebra.Element, params InnerProductPa
 /*
 computeBipRecursive is the main recursive function that will be used to compute the inner product argument.
 */
-func computeBipRecursive(a, b []*big.Int, g, h []algebra.Element, u, P algebra.Element, n int64, Ls, Rs []algebra.Element, SP algebra.Group) InnerProductProof {
+func computeBipRecursive(a, b []*big.Int, g, h []group.Element, u, P group.Element, n int64, Ls, Rs []group.Element, SP group.Group) InnerProductProof {
 	var (
 		proof                            InnerProductProof
 		cL, cR, x, xinv, x2, x2inv       *big.Int
-		L, R, Lh, Rh, Pprime             algebra.Element
-		gprime, hprime, gprime2, hprime2 []algebra.Element
+		L, R, Lh, Rh, Pprime             group.Element
+		gprime, hprime, gprime2, hprime2 []group.Element
 		aprime, bprime, aprime2, bprime2 []*big.Int
 	)
 
@@ -235,7 +235,7 @@ func (proof InnerProductProof) Verify() (bool, error) {
 	logn := len(proof.Ls)
 	var (
 		x, xinv, x2, x2inv                   *big.Int
-		ngprime, nhprime, ngprime2, nhprime2 []algebra.Element
+		ngprime, nhprime, ngprime2, nhprime2 []group.Element
 	)
 
 	gprime := proof.Params.Gg
@@ -290,7 +290,7 @@ func (proof InnerProductProof) Verify() (bool, error) {
 /*
 hashIP is responsible for the computing a Zp element given elements from GT and G1.
 */
-func hashIP(g, h []algebra.Element, P algebra.Element, c *big.Int, n int64) (*big.Int, error) {
+func hashIP(g, h []group.Element, P group.Element, c *big.Int, n int64) (*big.Int, error) {
 	digest := sha256.New()
 	digest.Write([]byte(P.String()))
 
@@ -310,7 +310,7 @@ func hashIP(g, h []algebra.Element, P algebra.Element, c *big.Int, n int64) (*bi
 /*
 commitInnerProduct is responsible for calculating g^a.h^b.
 */
-func commitInnerProduct(g, h []algebra.Element, a, b []*big.Int, SP algebra.Group) algebra.Element {
+func commitInnerProduct(g, h []group.Element, a, b []*big.Int, SP group.Group) group.Element {
 	ga, _ := VectorExp(g, a, SP)
 	hb, _ := VectorExp(h, b, SP)
 	return SP.Element().Add(ga, hb)
@@ -319,9 +319,9 @@ func commitInnerProduct(g, h []algebra.Element, a, b []*big.Int, SP algebra.Grou
 /*
 vectorScalarExp computes a[i]^b for each i.
 */
-func vectorScalarExp(a []algebra.Element, b *big.Int, SP algebra.Group) []algebra.Element {
+func vectorScalarExp(a []group.Element, b *big.Int, SP group.Group) []group.Element {
 	n := int64(len(a))
-	result := make([]algebra.Element, n)
+	result := make([]group.Element, n)
 	for i := int64(0); i < n; i++ {
 		result[i] = SP.Element().Scale(a[i], b)
 	}

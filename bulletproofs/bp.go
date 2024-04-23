@@ -21,7 +21,7 @@ import (
 	"crypto/rand"
 	"errors"
 	"fmt"
-	"github.com/takakv/msc-poc/algebra"
+	"github.com/takakv/msc-poc/group"
 	"math"
 	"math/big"
 
@@ -37,17 +37,17 @@ type BulletProofSetupParams struct {
 	// N is the bit-length of the range.
 	N int64
 	// G is the Elliptic Curve generator.
-	G algebra.Element
+	G group.Element
 	// H is a new generator, computed using MapToGroup function,
 	// such that there is no discrete logarithm relation with G.
-	H algebra.Element
+	H group.Element
 	// Gg and Hh are sets of new generators obtained using MapToGroup.
 	// They are used to compute Pedersen Vector Commitments.
-	Gg []algebra.Element
-	Hh []algebra.Element
+	Gg []group.Element
+	Hh []group.Element
 	// InnerProductParams is the setup parameters for the inner product proof.
 	InnerProductParams InnerProductParams
-	SP                 algebra.Group
+	SP                 group.Group
 }
 
 /*
@@ -55,16 +55,16 @@ BulletProof is the structure that contains the elements that are necessary for
 the verification of the Zero Knowledge Proof.
 */
 type BulletProof struct {
-	V                 algebra.Element
-	A                 algebra.Element
-	S                 algebra.Element
-	T1                algebra.Element
-	T2                algebra.Element
+	V                 group.Element
+	A                 group.Element
+	S                 group.Element
+	T1                group.Element
+	T2                group.Element
 	Taux              *big.Int
 	Mu                *big.Int
 	Tprime            *big.Int
 	InnerProductProof InnerProductProof
-	Commit            algebra.Element
+	Commit            group.Element
 	Params            BulletProofSetupParams
 }
 
@@ -73,7 +73,7 @@ Setup is responsible for computing the common parameters.
 Only works for ranges to 0 to 2^n, where n is a power of 2 and n <= 32
 TODO: allow n > 32 (need uint64 for that).
 */
-func Setup(b int64, SP algebra.Group) (BulletProofSetupParams, error) {
+func Setup(b int64, SP group.Group) (BulletProofSetupParams, error) {
 	if !IsPowerOfTwo(b) {
 		return BulletProofSetupParams{}, errors.New("range end is not a power of 2")
 	}
@@ -89,8 +89,8 @@ func Setup(b int64, SP algebra.Group) (BulletProofSetupParams, error) {
 	if params.N > 32 {
 		return BulletProofSetupParams{}, errors.New("range end can not be greater than 2**32")
 	}
-	params.Gg = make([]algebra.Element, params.N)
-	params.Hh = make([]algebra.Element, params.N)
+	params.Gg = make([]group.Element, params.N)
+	params.Hh = make([]group.Element, params.N)
 	for i := int64(0); i < params.N; i++ {
 		params.Gg[i], _ = SP.Element().MapToGroup(SEEDH + "g" + fmt.Sprint(i))
 		params.Hh[i], _ = SP.Element().MapToGroup(SEEDH + "h" + fmt.Sprint(i))
@@ -341,7 +341,7 @@ func (proof *BulletProof) Verify() (bool, error) {
 /*
 sampleRandomVector generates a vector composed by random big numbers.
 */
-func sampleRandomVector(N int64, SP algebra.Group) []*big.Int {
+func sampleRandomVector(N int64, SP group.Group) []*big.Int {
 	s := make([]*big.Int, N)
 	for i := int64(0); i < N; i++ {
 		s[i], _ = rand.Int(rand.Reader, SP.N())
@@ -356,12 +356,12 @@ vector of generators. This method is used both by prover and verifier. After thi
 update we have that A is a vector commitments to (aL, aR . y^n). Also S is a vector
 commitment to (sL, sR . y^n).
 */
-func updateGenerators(Hh []algebra.Element, y *big.Int, N int64, SP algebra.Group) []algebra.Element {
+func updateGenerators(Hh []group.Element, y *big.Int, N int64, SP group.Group) []group.Element {
 	var (
 		i int64
 	)
 	// Compute h'                                                          // (64)
-	hprime := make([]algebra.Element, N)
+	hprime := make([]group.Element, N)
 	// Switch generators
 	yinv := bn.ModInverse(y, SP.N())
 	expy := yinv
@@ -392,7 +392,7 @@ func computeAR(x []int64) ([]int64, error) {
 	return result, nil
 }
 
-func commitVectorBig(aL, aR []*big.Int, alpha *big.Int, H algebra.Element, g, h []algebra.Element, n int64, SP algebra.Group) algebra.Element {
+func commitVectorBig(aL, aR []*big.Int, alpha *big.Int, H group.Element, g, h []group.Element, n int64, SP group.Group) group.Element {
 	// Compute h^alpha.vg^aL.vh^aR
 	R := SP.Element().Scale(H, alpha)
 	for i := int64(0); i < n; i++ {
@@ -405,7 +405,7 @@ func commitVectorBig(aL, aR []*big.Int, alpha *big.Int, H algebra.Element, g, h 
 /*
 commitVector computes a commitment to the bit of the secret.
 */
-func commitVector(aL, aR []int64, alpha *big.Int, H algebra.Element, g, h []algebra.Element, n int64, SP algebra.Group) algebra.Element {
+func commitVector(aL, aR []int64, alpha *big.Int, H group.Element, g, h []group.Element, n int64, SP group.Group) group.Element {
 	// Compute h^alpha.vg^aL.vh^aR
 	R := SP.Element().Scale(H, alpha)
 	for i := int64(0); i < n; i++ {

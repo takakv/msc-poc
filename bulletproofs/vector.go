@@ -19,7 +19,7 @@ package bulletproofs
 
 import (
 	"errors"
-	"github.com/takakv/msc-poc/algebra"
+	"github.com/takakv/msc-poc/group"
 	"math/big"
 
 	"github.com/ing-bank/zkrp/util/bn"
@@ -150,9 +150,9 @@ func VectorMul(a, b []*big.Int, mod *big.Int) ([]*big.Int, error) {
 /*
 VectorECMul computes vector EC addition componentwisely.
 */
-func VectorECAdd(a, b []algebra.Element, SP algebra.Group) ([]algebra.Element, error) {
+func VectorECAdd(a, b []group.Element, SP group.Group) ([]group.Element, error) {
 	var (
-		result  []algebra.Element
+		result  []group.Element
 		i, n, m int64
 	)
 	n = int64(len(a))
@@ -160,7 +160,7 @@ func VectorECAdd(a, b []algebra.Element, SP algebra.Group) ([]algebra.Element, e
 	if n != m {
 		return nil, errors.New("Size of first argument is different from size of second argument.")
 	}
-	result = make([]algebra.Element, n)
+	result = make([]group.Element, n)
 	i = 0
 	for i < n {
 		// result[i] = new(p256.P256).Multiply(a[i], b[i])

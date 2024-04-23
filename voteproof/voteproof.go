@@ -4,17 +4,17 @@ import (
 	"bytes"
 	"crypto/rand"
 	"crypto/sha256"
-	"github.com/takakv/msc-poc/algebra"
+	"github.com/takakv/msc-poc/group"
 	"math/big"
 )
 
 // GroupParameters describes a group in a prime field.
 type GroupParameters struct {
-	G algebra.Element // Group generator.
-	H algebra.Element // Generator whose logarithm to the base G is not known.
-	N *big.Int        // Group size.
-	F *big.Int        // Field size.
-	I algebra.Group   // Group implementation.
+	G group.Element // Group generator.
+	H group.Element // Generator whose logarithm to the base G is not known.
+	N *big.Int      // Group size.
+	F *big.Int      // Field size.
+	I group.Group   // Group implementation.
 }
 
 // AlgebraicParameters describes both groups of the vote correctness proof system.
@@ -35,18 +35,18 @@ type ProofParams struct {
 
 // VerCommitments holds the commitments needed to verify the correctness proof.
 type VerCommitments struct {
-	Y   algebra.Element // First component of an ElGamal ciphertext.
-	Xp  algebra.Element // Second component of an ElGamal ciphertext.
-	Xq1 algebra.Element // Pedersen commitment to a secret.
-	Xq2 algebra.Element // Pedersen commitment to a secret.
+	Y   group.Element // First component of an ElGamal ciphertext.
+	Xp  group.Element // Second component of an ElGamal ciphertext.
+	Xq1 group.Element // Pedersen commitment to a secret.
+	Xq2 group.Element // Pedersen commitment to a secret.
 }
 
 // SigmaCommit represents the initial commitments of the protocol.
 type SigmaCommit struct {
-	W   algebra.Element
-	Kp  algebra.Element
-	Kq1 algebra.Element
-	Kq2 algebra.Element
+	W   group.Element
+	Kp  group.Element
+	Kq1 group.Element
+	Kq2 group.Element
 }
 
 // SigmaChallenge represents the random challenge.
@@ -86,20 +86,20 @@ func Setup(lenSecret uint8, lenChallenge uint16, fieldSize uint16,
 	return params
 }
 
-func PedersenCommit(m *big.Int, r *big.Int, gp GroupParameters) algebra.Element {
+func PedersenCommit(m *big.Int, r *big.Int, gp GroupParameters) group.Element {
 	bind := gp.I.Element().BaseScale(m)
 	blind := gp.I.Element().Scale(gp.H, r)
 	return gp.I.Element().Add(bind, blind)
 }
 
-func SigmaPedersenCheck(z, s, c *big.Int, k, x algebra.Element, gp GroupParameters) bool {
+func SigmaPedersenCheck(z, s, c *big.Int, k, x group.Element, gp GroupParameters) bool {
 	left := PedersenCommit(z, s, gp)
 	right := gp.I.Element().Scale(x, c)
 	right = gp.I.Element().Add(right, k)
 	return left.Equal(right)
 }
 
-func HashProof(w algebra.Element, Kp algebra.Element, Kq1, Kq2 algebra.Element) *big.Int {
+func HashProof(w group.Element, Kp group.Element, Kq1, Kq2 group.Element) *big.Int {
 	hasher := sha256.New()
 
 	var buffer bytes.Buffer
