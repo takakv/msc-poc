@@ -2,16 +2,16 @@ package main
 
 import (
 	"crypto/rand"
-	"github.com/takakv/msc-poc/algebra"
+	"github.com/takakv/msc-poc/group"
 	"math/big"
 )
 
 type ElGamalCiphertext struct {
-	U algebra.Element // *big.Int
-	V algebra.Element // *big.Int
+	U group.Element // *big.Int
+	V group.Element // *big.Int
 }
 
-func encryptVote(choice uint16, egPK algebra.Element, FFG algebra.Group) (ElGamalCiphertext, *big.Int) {
+func encryptVote(choice uint16, egPK group.Element, FFG group.Group) (ElGamalCiphertext, *big.Int) {
 	var tmp big.Int
 
 	rnd, _ := rand.Int(rand.Reader, tmp.Sub(egPK.GroupOrder(), big.NewInt(1)))

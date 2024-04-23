@@ -18,7 +18,7 @@
 package bulletproofs
 
 import (
-	"github.com/takakv/msc-poc/algebra"
+	"github.com/takakv/msc-poc/group"
 	"math"
 	"math/big"
 	"testing"
@@ -29,7 +29,7 @@ Test method powerOf, which must return a vector containing a growing sequence of
 powers of 2.
 */
 func TestPowerOf(t *testing.T) {
-	var SecP256k1Group = algebra.NewSecP256k1Group()
+	var SecP256k1Group = group.NewSecP256k1Group()
 	result := powerOf(new(big.Int).SetInt64(3), 3, SecP256k1Group)
 	ok := result[0].Cmp(new(big.Int).SetInt64(1)) == 0
 	ok = ok && (result[1].Cmp(new(big.Int).SetInt64(3)) == 0)
@@ -81,7 +81,7 @@ func TestScalarProduct(t *testing.T) {
 	var (
 		a, b []*big.Int
 	)
-	var SecP256k1Group = algebra.NewSecP256k1Group()
+	var SecP256k1Group = group.NewSecP256k1Group()
 
 	a = make([]*big.Int, 3)
 	b = make([]*big.Int, 3)

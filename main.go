@@ -2,8 +2,8 @@ package main
 
 import (
 	"fmt"
-	"github.com/takakv/msc-poc/algebra"
 	"github.com/takakv/msc-poc/bulletproofs"
+	"github.com/takakv/msc-poc/group"
 	"github.com/takakv/msc-poc/voteproof"
 )
 import "math/big"
@@ -14,7 +14,7 @@ type PublicParameters struct {
 	// Parameters of the Elliptic Curve Bulletproofs group.
 	ECGroupParams voteproof.GroupParameters
 	// ElGamal public key.
-	EGPK algebra.Element
+	EGPK group.Element
 	// Lowest candidate number.
 	candidateMin uint16
 	// Highest candidate number.
@@ -42,7 +42,7 @@ func setup() PublicParameters {
 	// number of candidates so far in any Estonian election has been 15322.
 	const candidateEnd uint16 = 1000
 
-	RFC3526ModPGroup3072 := algebra.NewModPGroup(
+	RFC3526ModPGroup3072 := group.NewModPGroup(
 		"RFC3526ModPGroup3072",
 		`FFFFFFFF FFFFFFFF C90FDAA2 2168C234 C4C6628B 80DC1CD1
 		29024E08 8A67CC74 020BBEA6 3B139B22 514A0879 8E3404DD
@@ -62,7 +62,7 @@ func setup() PublicParameters {
 		43DB5BFC E0FD108E 4B82D120 A93AD2CA FFFFFFFF FFFFFFFF
 		`, "2")
 
-	SecP256k1Group := algebra.NewSecP256k1Group()
+	SecP256k1Group := group.NewSecP256k1Group()
 
 	// W.l.o.g. this secret is not known to any one party.
 	elGamalPrivateKey := big.NewInt(13)

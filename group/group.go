@@ -1,4 +1,4 @@
-package algebra
+package group
 
 import "math/big"
 

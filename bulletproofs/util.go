@@ -21,7 +21,7 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"errors"
-	"github.com/takakv/msc-poc/algebra"
+	"github.com/takakv/msc-poc/group"
 	"math/big"
 
 	"github.com/ing-bank/zkrp/util/bn"
@@ -31,7 +31,7 @@ import (
 /*
 powerOf returns a vector composed by powers of x.
 */
-func powerOf(x *big.Int, n int64, SP algebra.Group) []*big.Int {
+func powerOf(x *big.Int, n int64, SP group.Group) []*big.Int {
 	var (
 		i      int64
 		result []*big.Int
@@ -51,7 +51,7 @@ func powerOf(x *big.Int, n int64, SP algebra.Group) []*big.Int {
 /*
 HashBP is responsible for the computing a Zp element given elements from GT and G1.
 */
-func HashBP(A, S algebra.Element) (*big.Int, *big.Int, error) {
+func HashBP(A, S group.Element) (*big.Int, *big.Int, error) {
 
 	digest1 := sha256.New()
 	var buffer bytes.Buffer
@@ -78,9 +78,9 @@ func HashBP(A, S algebra.Element) (*big.Int, *big.Int, error) {
 /*
 VectorExp computes Prod_i^n{a[i]^b[i]}.
 */
-func VectorExp(a []algebra.Element, b []*big.Int, SP algebra.Group) (algebra.Element, error) {
+func VectorExp(a []group.Element, b []*big.Int, SP group.Group) (group.Element, error) {
 	var (
-		result  algebra.Element
+		result  group.Element
 		i, n, m int64
 	)
 	n = int64(len(a))
@@ -102,7 +102,7 @@ func VectorExp(a []algebra.Element, b []*big.Int, SP algebra.Group) (algebra.Ele
 /*
 ScalarProduct return the inner product between a and b.
 */
-func ScalarProduct(a, b []*big.Int, SP algebra.Group) (*big.Int, error) {
+func ScalarProduct(a, b []*big.Int, SP group.Group) (*big.Int, error) {
 	var (
 		result  *big.Int
 		i, n, m int64

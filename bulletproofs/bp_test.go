@@ -18,7 +18,7 @@
 package bulletproofs
 
 import (
-	"github.com/takakv/msc-poc/algebra"
+	"github.com/takakv/msc-poc/group"
 	"math"
 	"math/big"
 	"testing"
@@ -75,7 +75,7 @@ func TestXWithinRange(t *testing.T) {
 }
 
 func setupRange(t *testing.T, rangeEnd int64) BulletProofSetupParams {
-	params, err := Setup(rangeEnd, algebra.NewSecP256k1Group())
+	params, err := Setup(rangeEnd, group.NewSecP256k1Group())
 	if err != nil {
 		t.Errorf("Invalid range end: %s", err)
 		t.FailNow()
