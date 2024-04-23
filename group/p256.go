@@ -126,8 +126,8 @@ func (e *Point) MapToGroup(s string) (Element, error) {
 	tmp, _ := p256.MapToGroup(s)
 	tmpX := tmp.X.Bytes()
 	tmpY := tmp.Y.Bytes()
-	e.curve.Element().SetBytes(append(tmpX, tmpY...))
-	return e, nil
+	res := e.curve.Element().SetBytes(append(tmpX, tmpY...))
+	return res, nil
 }
 
 func (e *Point) String() string {
