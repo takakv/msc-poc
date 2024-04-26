@@ -26,8 +26,8 @@ var RFC3526ModPGroup3072 = NewModPGroup(
 		43DB5BFC E0FD108E 4B82D120 A93AD2CA FFFFFFFF FFFFFFFF
 		`, "2")
 
-var SecP256k1Group = NewSecP256k1Group()
-var P384Group = NewP384Group()
+var SecP256k1Group = SecP256k1()
+var P384Group = P384()
 
 var allGroups = []Group{
 	RFC3526ModPGroup3072,
@@ -38,16 +38,15 @@ var allGroups = []Group{
 func TestGroup(t *testing.T) {
 	const testTimes = 1 << 7
 	for _, g := range allGroups {
-		g := g
-		//n := g.(fmt.Stringer).String()
+		n := g.Name()
 		// t.Run(n+"/Add", func(tt *testing.T) { testAdd(tt, testTimes, g) })
-		t.Run("/Neg", func(tt *testing.T) { testNeg(tt, testTimes, g) })
+		t.Run(n+"/Neg", func(tt *testing.T) { testNeg(tt, testTimes, g) })
 		// t.Run(n+"/Mul", func(tt *testing.T) { testMul(tt, testTimes, g) })
 		// t.Run(n+"/MulGen", func(tt *testing.T) { testMulGen(tt, testTimes, g) })
 		// t.Run(n+"/CMov", func(tt *testing.T) { testCMov(tt, testTimes, g) })
 		// t.Run(n+"/CSelect", func(tt *testing.T) { testCSelect(tt, testTimes, g) })
-		t.Run("/Order", func(tt *testing.T) { testOrder(tt, testTimes, g) })
-		t.Run("/Set", func(tt *testing.T) { testSet(tt, g) })
+		t.Run(n+"/Order", func(tt *testing.T) { testOrder(tt, testTimes, g) })
+		t.Run(n+"/Set", func(tt *testing.T) { testSet(tt, g) })
 		// t.Run(n+"/Marshal", func(tt *testing.T) { testMarshal(tt, testTimes, g) })
 		// t.Run(n+"/Scalar", func(tt *testing.T) { testScalar(tt, testTimes, g) })
 	}

@@ -15,6 +15,11 @@ type ModPGroup struct {
 	gen        *big.Int
 	fieldOrder *big.Int
 	groupOrder *big.Int
+	name       string
+}
+
+func (g *ModPGroup) Name() string {
+	return g.name
 }
 
 func (g *ModPGroup) equals(h Group) bool {
@@ -164,5 +169,6 @@ func NewModPGroup(name string, fieldOrder, generator string) Group {
 	G.fieldOrder = ffOrder
 	G.groupOrder = genOrder
 	G.gen = gen
+	G.name = name
 	return G
 }

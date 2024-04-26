@@ -33,7 +33,7 @@ func TestInnerProduct(t *testing.T) {
 	)
 	c := new(big.Int).SetInt64(142)
 
-	var SecP256k1Group = group.NewSecP256k1Group()
+	var SecP256k1Group = group.SecP256k1()
 
 	innerProductParams, _ := setupInnerProduct(nil, nil, nil, c, 4, SecP256k1Group)
 

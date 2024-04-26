@@ -34,6 +34,9 @@ type Element interface {
 // Group represents a prime-order group over a prime-order field.
 // The group can be either multiplicative or additive.
 type Group interface {
+	// Name returns the name of the group.
+	Name() string
+
 	// Element creates a new group element.
 	Element() Element
 	// Generator creates a group element set to the group's generator.

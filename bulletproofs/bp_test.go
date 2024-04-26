@@ -75,7 +75,7 @@ func TestXWithinRange(t *testing.T) {
 }
 
 func setupRange(t *testing.T, rangeEnd int64) BulletProofSetupParams {
-	params, err := Setup(rangeEnd, group.NewSecP256k1Group())
+	params, err := Setup(rangeEnd, group.SecP256k1())
 	if err != nil {
 		t.Errorf("Invalid range end: %s", err)
 		t.FailNow()
@@ -91,7 +91,7 @@ func proveAndVerifyRange(x *big.Int, params BulletProofSetupParams) bool {
 
 /* TODO: reimplement and test marshalling
 func TestJsonEncodeDecode(t *testing.T) {
-	params, _ := Setup(MAX_RANGE_END, group.NewSecP256k1Group())
+	params, _ := Setup(MAX_RANGE_END, group.SecP256k1())
 	proof, _, _ := Prove(new(big.Int).SetInt64(18), params)
 	jsonEncoded, err := json.Marshal(proof)
 	if err != nil {

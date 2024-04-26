@@ -62,7 +62,7 @@ func setup() PublicParameters {
 		43DB5BFC E0FD108E 4B82D120 A93AD2CA FFFFFFFF FFFFFFFF
 		`, "2")
 
-	SecP256k1Group := group.NewSecP256k1Group()
+	SecP256k1Group := group.SecP256k1()
 
 	// W.l.o.g. this secret is not known to any one party.
 	elGamalPrivateKey := big.NewInt(13)

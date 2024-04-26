@@ -10,12 +10,17 @@ import (
 type p384Group struct {
 	fieldOrder *big.Int
 	curveOrder *big.Int
+	name       string
 }
 
 type p384Point struct {
 	curve *p384Group
 	group *group.Group
 	val   group.Element
+}
+
+func (g *p384Group) Name() string {
+	return g.name
 }
 
 func (g *p384Group) P() *big.Int {
@@ -140,12 +145,13 @@ func (e *p384Point) MarshalJSON() ([]byte, error) {
 	return json.Marshal(e.val)
 }
 
-func NewP384Group() Group {
+func P384() Group {
 	p, _ := new(big.Int).SetString("fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffeffffffff0000000000000000ffffffff", 16)
 	n, _ := new(big.Int).SetString("ffffffffffffffffffffffffffffffffffffffffffffffffc7634d81f4372ddf581a0db248b0a77aecec196accc52973", 16)
 
 	G := new(p384Group)
 	G.fieldOrder = p
 	G.curveOrder = n
+	G.name = "P-384"
 	return G
 }
