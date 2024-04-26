@@ -7,95 +7,113 @@ import (
 	"math/big"
 )
 
-type CurveGroup struct {
+type p256Group struct {
 	fieldOrder *big.Int
 	curveOrder *big.Int
 }
 
-type Point struct {
-	curve *CurveGroup
+type p256Point struct {
+	curve *p256Group
 	val   *p256.P256
 }
 
-func (g *CurveGroup) P() *big.Int {
+func (g *p256Group) P() *big.Int {
 	return g.fieldOrder
 }
 
-func (g *CurveGroup) N() *big.Int {
+func (g *p256Group) N() *big.Int {
 	return g.curveOrder
 }
 
-func (g *CurveGroup) Generator() Element {
-	return &Point{
+func (g *p256Group) Generator() Element {
+	return &p256Point{
 		curve: g,
 		val:   new(p256.P256).ScalarBaseMult(big.NewInt(1)),
 	}
 }
 
-func (g *CurveGroup) Identity() Element {
-	return &Point{
+func (g *p256Group) Identity() Element {
+	return &p256Point{
 		curve: g,
 		val:   new(p256.P256).SetInfinity(),
 	}
 }
 
-func (g *CurveGroup) Random() Element {
+func (g *p256Group) Random() Element {
 	r, _ := rand.Int(rand.Reader, g.curveOrder)
 	e := g.Identity()
 	e.BaseScale(r)
 	return e
 }
 
-func (g *CurveGroup) Element() Element {
-	p := new(Point)
+func (g *p256Group) Element() Element {
+	p := new(p256Point)
 	p.curve = g
 	p.val = new(p256.P256)
 	return p
 }
 
-func (e *Point) check(a Element) *Point {
-	ey, ok := a.(*Point)
+func (e *p256Point) check(a Element) *p256Point {
+	ey, ok := a.(*p256Point)
 	if !ok {
 		panic("incompatible group element type")
 	}
 	return ey
 }
 
-func (e *Point) Add(a Element, b Element) Element {
+func (e *p256Point) Add(a Element, b Element) Element {
 	ca := e.check(a)
 	cb := e.check(b)
 	e.val = new(p256.P256).Multiply(ca.val, cb.val)
 	return e
 }
 
-func (e *Point) Subtract(a Element, b Element) Element {
+func (e *p256Point) Subtract(a Element, b Element) Element {
 	tmp := e.curve.Identity()
 	tmp.Negate(b)
 	e.Add(a, tmp)
 	return e
 }
 
-func (e *Point) Negate(a Element) Element {
+func (e *p256Point) Negate(a Element) Element {
 	ca := e.check(a)
 	e.val = new(p256.P256).ScalarMult(ca.val, big.NewInt(-1))
 	return e
 }
 
-func (e *Point) Equal(b Element) bool {
+func (e *p256Point) Equal(b Element) bool {
 	cb := e.check(b)
-	if e.val.X == nil || e.val.Y == nil || cb.val.X == nil || cb.val.Y == nil {
-		return e.val.X == nil && e.val.Y == nil && cb.val.X == nil && cb.val.Y == nil
+	zero := big.NewInt(0)
+
+	xIsEq := false
+	yIsEq := false
+
+	if e.val.X == nil || e.val.X.Cmp(zero) == 0 {
+		xIsEq = cb.val.X == nil || cb.val.X.Cmp(zero) == 0
+	} else if cb.val.X == nil || cb.val.X.Cmp(zero) == 0 {
+		xIsEq = e.val.X == nil || e.val.X.Cmp(zero) == 0
+	} else {
+		xIsEq = e.val.X.Cmp(cb.val.X) == 0
 	}
-	return e.val.X.Cmp(cb.val.X) == 0 && e.val.Y.Cmp(cb.val.Y) == 0
+
+	if e.val.Y == nil || e.val.Y.Cmp(zero) == 0 {
+		yIsEq = cb.val.Y == nil || cb.val.Y.Cmp(zero) == 0
+	} else if cb.val.Y == nil || cb.val.Y.Cmp(zero) == 0 {
+		yIsEq = e.val.Y == nil || e.val.Y.Cmp(zero) == 0
+	} else {
+		yIsEq = e.val.Y.Cmp(cb.val.Y) == 0
+	}
+
+	return xIsEq && yIsEq
 }
 
-func (e *Point) Set(a Element) Element {
+func (e *p256Point) Set(a Element) Element {
 	ca := e.check(a)
 	e.val = new(p256.P256).Add(new(p256.P256).SetInfinity(), ca.val)
 	return e
 }
 
-func (e *Point) SetBytes(b []byte) Element {
+func (e *p256Point) SetBytes(b []byte) Element {
 	xBytes := b[:32]
 	yBytes := b[32:]
 	e.val = new(p256.P256).SetInfinity()
@@ -104,26 +122,26 @@ func (e *Point) SetBytes(b []byte) Element {
 	return e
 }
 
-func (e *Point) Scale(a Element, s *big.Int) Element {
+func (e *p256Point) Scale(a Element, s *big.Int) Element {
 	ca := e.check(a)
 	e.val = new(p256.P256).ScalarMult(ca.val, s)
 	return e
 }
 
-func (e *Point) BaseScale(s *big.Int) Element {
+func (e *p256Point) BaseScale(s *big.Int) Element {
 	e.val = new(p256.P256).ScalarBaseMult(s)
 	return e
 }
 
-func (e *Point) GroupOrder() *big.Int {
+func (e *p256Point) GroupOrder() *big.Int {
 	return e.curve.curveOrder
 }
 
-func (e *Point) FieldOrder() *big.Int {
+func (e *p256Point) FieldOrder() *big.Int {
 	return e.curve.fieldOrder
 }
 
-func (e *Point) MapToGroup(s string) (Element, error) {
+func (e *p256Point) MapToGroup(s string) (Element, error) {
 	tmp, _ := p256.MapToGroup(s)
 	tmpX := tmp.X.Bytes()
 	tmpY := tmp.Y.Bytes()
@@ -131,18 +149,18 @@ func (e *Point) MapToGroup(s string) (Element, error) {
 	return res, nil
 }
 
-func (e *Point) String() string {
+func (e *p256Point) String() string {
 	return e.val.String()
 }
 
-func (e *Point) IsIdentity() bool {
+func (e *p256Point) IsIdentity() bool {
 	if e.val.X == nil && e.val.Y == nil {
 		return true
 	}
 	return e.val.X.Cmp(big.NewInt(0)) == 0 && e.val.Y.Cmp(big.NewInt(0)) == 0
 }
 
-func (e *Point) MarshalJSON() ([]byte, error) {
+func (e *p256Point) MarshalJSON() ([]byte, error) {
 	return json.Marshal(e.val)
 }
 
@@ -150,7 +168,7 @@ func NewSecP256k1Group() Group {
 	p, _ := new(big.Int).SetString("fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f", 16)
 	n, _ := new(big.Int).SetString("fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141", 16)
 
-	G := new(CurveGroup)
+	G := new(p256Group)
 	G.fieldOrder = p
 	G.curveOrder = n
 	return G
