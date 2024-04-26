@@ -10,11 +10,16 @@ import (
 type p256Group struct {
 	fieldOrder *big.Int
 	curveOrder *big.Int
+	name       string
 }
 
 type p256Point struct {
 	curve *p256Group
 	val   *p256.P256
+}
+
+func (g *p256Group) Name() string {
+	return g.name
 }
 
 func (g *p256Group) P() *big.Int {
@@ -164,12 +169,13 @@ func (e *p256Point) MarshalJSON() ([]byte, error) {
 	return json.Marshal(e.val)
 }
 
-func NewSecP256k1Group() Group {
+func SecP256k1() Group {
 	p, _ := new(big.Int).SetString("fffffffffffffffffffffffffffffffffffffffffffffffffffffffefffffc2f", 16)
 	n, _ := new(big.Int).SetString("fffffffffffffffffffffffffffffffebaaedce6af48a03bbfd25e8cd0364141", 16)
 
 	G := new(p256Group)
 	G.fieldOrder = p
 	G.curveOrder = n
+	G.name = "secp256k1"
 	return G
 }
