@@ -4,7 +4,7 @@ import (
 	"math/big"
 )
 
-// Element represents a group element.
+// Element represents an element of a prime-order group.
 type Element interface {
 	// Add sets the value of this element to A + B and returns it.
 	Add(A, B Element) Element
@@ -31,23 +31,22 @@ type Element interface {
 	IsIdentity() bool
 }
 
-// Group is an algebraic group.
+// Group represents a prime-order group over a prime-order field.
+// The group can be either multiplicative or additive.
 type Group interface {
-	// Generator returns I.
+	// Element creates a new group element.
+	Element() Element
+	// Generator creates a group element set to the group's generator.
 	Generator() Element
-	// Identity returns E.
-	//
-	// To assign a value to an element, it is recommended to first initialize an
-	// element using Identity() and then read the value into with
-	// Element.Read() or Element.SetBytes().
+	// Identity creates a group element set to the group's identity element.
 	Identity() Element
 
 	// Random returns uniformly sampled element from the group by sampling a
 	// random scalar r and returning rG.
 	Random() Element
 
-	Element() Element
-
+	// P is the prime-order of the field.
 	P() *big.Int
+	// N is the prime-order of the group.
 	N() *big.Int
 }
