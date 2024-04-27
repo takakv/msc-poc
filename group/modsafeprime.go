@@ -101,7 +101,7 @@ func (e *ModPElement) Negate(a Element) Element {
 	return e
 }
 
-func (e *ModPElement) Equal(b Element) bool {
+func (e *ModPElement) IsEqual(b Element) bool {
 	ey := e.check(b)
 	return e.val.Cmp(ey.val) == 0
 }

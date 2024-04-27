@@ -76,7 +76,7 @@ func testOrder(t *testing.T, testTimes int, g Group) {
 		Q.Scale(P, minusOne)
 		got := Q.Add(Q, P)
 		want := I
-		if !got.Equal(want) {
+		if !got.IsEqual(want) {
 			t.Error("testOrder | Got:", got, "Wanted:", want)
 		}
 	}
@@ -86,7 +86,7 @@ func testSet(t *testing.T, g Group) {
 	P := g.Random()
 	Q := g.Element()
 	Q.Set(P)
-	if !Q.Equal(P) {
+	if !Q.IsEqual(P) {
 		t.Error("testSet | Got:", false, "Wanted:", true)
 	}
 }
@@ -117,14 +117,14 @@ func TestMath(t *testing.T) {
 
 	a := g.Element().BaseScale(big.NewInt(2))
 	b := g.Element().Add(g.Generator(), g.Generator())
-	ok := a.Equal(b)
+	ok := a.IsEqual(b)
 	if ok != true {
 		t.Error("doubling error")
 	}
 
 	a = g.Element().Add(a, g.Generator())
 	b = g.Element().BaseScale(big.NewInt(3))
-	ok = a.Equal(b)
+	ok = a.IsEqual(b)
 	if ok != true {
 		t.Error("error in adding or scaling")
 	}
@@ -134,7 +134,7 @@ func TestMath(t *testing.T) {
 	r2 := g.Random()
 	e.Add(r1, r2)
 	e.Subtract(e, r2)
-	ok = e.Equal(r1)
+	ok = e.IsEqual(r1)
 	if ok != true {
 		t.Error("error in subtracting")
 	}

@@ -96,7 +96,7 @@ func SigmaPedersenCheck(z, s, c *big.Int, k, x group.Element, gp GroupParameters
 	left := PedersenCommit(z, s, gp)
 	right := gp.I.Element().Scale(x, c)
 	right = gp.I.Element().Add(right, k)
-	return left.Equal(right)
+	return left.IsEqual(right)
 }
 
 func HashProof(w group.Element, Kp group.Element, Kq1, Kq2 group.Element) *big.Int {
@@ -163,7 +163,7 @@ func (proof *SigmaProof) Verify(comm VerCommitments) bool {
 	l := proof.Params.GFF.I.Element().BaseScale(proof.Sp)
 	r := proof.Params.GFF.I.Element().Scale(comm.Y, proof.Challenge)
 	r = proof.Params.GFF.I.Element().Add(r, proof.W)
-	if !l.Equal(r) {
+	if !l.IsEqual(r) {
 		return false
 	}
 

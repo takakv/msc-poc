@@ -86,7 +86,7 @@ func (e *p256Point) Negate(a Element) Element {
 	return e
 }
 
-func (e *p256Point) Equal(b Element) bool {
+func (e *p256Point) IsEqual(b Element) bool {
 	cb := e.check(b)
 	zero := big.NewInt(0)
 

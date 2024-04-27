@@ -107,7 +107,7 @@ func TestJsonEncodeDecode(t *testing.T) {
 		t.Fatal("decode error:", err)
 	}
 
-	assert.Equal(t, proof, decodedProof, "should be equal")
+	assert.IsEqual(t, proof, decodedProof, "should be equal")
 
 	ok, err := decodedProof.Verify()
 	if err != nil {
