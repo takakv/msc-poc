@@ -28,11 +28,13 @@ var RFC3526ModPGroup3072 = NewModPGroup(
 
 var SecP256k1Group = SecP256k1()
 var P384Group = P384()
+var P256Group = P256()
 
 var allGroups = []Group{
 	RFC3526ModPGroup3072,
 	SecP256k1Group,
 	P384Group,
+	P256Group,
 }
 
 func TestGroup(t *testing.T) {
