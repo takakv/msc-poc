@@ -5,6 +5,7 @@ import (
 	"github.com/takakv/msc-poc/bulletproofs"
 	"github.com/takakv/msc-poc/group"
 	"github.com/takakv/msc-poc/voteproof"
+	"strings"
 )
 import "math/big"
 
@@ -25,7 +26,7 @@ type PublicParameters struct {
 	RPParams voteproof.ProofParams
 }
 
-func setup() PublicParameters {
+func setup(curveGroup group.Group) PublicParameters {
 	// While the choice length is configurable in theory, it is fixed
 	// at 16 in the current code (the used types will not fit more).
 	// For Estonian elections, this parameter should be suitable for the
@@ -62,12 +63,10 @@ func setup() PublicParameters {
 		43DB5BFC E0FD108E 4B82D120 A93AD2CA FFFFFFFF FFFFFFFF
 		`, "2")
 
-	SecP256k1Group := group.SecP256k1()
-
 	// W.l.o.g. this secret is not known to any one party.
 	elGamalPrivateKey := big.NewInt(13)
 
-	bpParams, _ := bulletproofs.Setup(65536, SecP256k1Group)
+	bpParams, _ := bulletproofs.Setup(65536, curveGroup)
 
 	var fieldGroupParams voteproof.GroupParameters
 	fieldGroupParams.I = RFC3526ModPGroup3072
@@ -77,7 +76,7 @@ func setup() PublicParameters {
 	fieldGroupParams.H = fieldGroupParams.I.Element().BaseScale(elGamalPrivateKey)
 
 	var curveGroupParams voteproof.GroupParameters
-	curveGroupParams.I = SecP256k1Group
+	curveGroupParams.I = curveGroup
 	curveGroupParams.F = fieldGroupParams.I.P()
 	curveGroupParams.N = curveGroupParams.I.N()
 	curveGroupParams.G = curveGroupParams.I.Generator()
@@ -103,15 +102,31 @@ func setup() PublicParameters {
 }
 
 func main() {
-	pp := setup()
+	SecP256k1Group := group.SecP256k1()
+	P384Group := group.P384()
 
-	fmt.Println("Vote casting")
-	vote := castVote(pp)
+	groups := []group.Group{SecP256k1Group, P384Group}
 
-	fmt.Println()
-	fmt.Println("Vote verification")
-	verify := verifyVote(vote, pp.RPParams)
+	sepLen := 60
 
-	fmt.Println()
-	fmt.Println("Vote is correctly formed:", verify)
+	for i, g := range groups {
+		if i != 0 {
+			fmt.Print("\n")
+		}
+		fmt.Println(strings.Repeat("=", sepLen))
+		fmt.Println("Generating public parameters for group:", g.Name())
+		pp := setup(g)
+
+		fmt.Println(strings.Repeat("-", sepLen))
+		fmt.Println("Vote casting")
+		vote := castVote(pp)
+
+		fmt.Println(strings.Repeat("-", sepLen))
+		fmt.Println("Vote verification")
+		verify := verifyVote(vote, pp.RPParams)
+
+		fmt.Println(strings.Repeat("-", sepLen))
+		fmt.Println("Vote is correctly formed:", verify)
+		fmt.Println(strings.Repeat("=", sepLen))
+	}
 }
