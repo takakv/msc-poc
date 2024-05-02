@@ -45,9 +45,7 @@ type BulletProofSetupParams struct {
 	// They are used to compute Pedersen Vector Commitments.
 	Gg []group.Element
 	Hh []group.Element
-	// InnerProductParams is the setup parameters for the inner product proof.
-	InnerProductParams InnerProductParams
-	SP                 group.Group
+	SP group.Group
 }
 
 /*
@@ -217,13 +215,12 @@ func Prove(secret *big.Int, params BulletProofSetupParams) (BulletProof, *big.In
 	hprime := updateGenerators(params.Hh, y, params.N, params.SP)
 
 	// SetupInnerProduct Inner Product (Section 4.2)
-	var setupErr error
-	params.InnerProductParams, setupErr = setupInnerProduct(params.H, params.Gg, hprime, tprime, params.N, params.SP)
+	ipp, setupErr := setupInnerProduct(params.H, params.Gg, hprime, tprime, params.N, params.SP)
 	if setupErr != nil {
 		return proof, gamma, setupErr
 	}
 	commit := commitInnerProduct(params.Gg, hprime, bl, br, params.SP)
-	proofip, _ := proveInnerProduct(bl, br, commit, params.InnerProductParams)
+	proofip, _ := proveInnerProduct(bl, br, commit, ipp)
 
 	proof.V = V
 	proof.A = A
