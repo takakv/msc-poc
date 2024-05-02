@@ -3,6 +3,7 @@ package group
 import (
 	"crypto/rand"
 	"encoding/json"
+	"fmt"
 	"github.com/cloudflare/circl/group"
 	"math/big"
 )
@@ -141,8 +142,64 @@ func (e *p384Point) IsIdentity() bool {
 	return e.val.IsIdentity()
 }
 
+func (e *p384Point) MarshalBinary() ([]byte, error) {
+	return e.val.MarshalBinary()
+}
+
+func (e *p384Point) UnmarshalBinary(data []byte) error {
+	err := e.val.UnmarshalBinary(data)
+	return err
+}
+
 func (e *p384Point) MarshalJSON() ([]byte, error) {
-	return json.Marshal(e.val)
+	tmp, _ := e.val.MarshalBinary()
+	xVal := big.NewInt(0)
+	yVal := big.NewInt(0)
+
+	// If the point is not 0.
+	if tmp[0] != 0 {
+		xBytes := tmp[1 : 48+1]
+		yBytes := tmp[1+48:]
+		if len(xBytes) != 48 || len(xBytes) != len(yBytes) {
+			return nil, fmt.Errorf("error in underlying binary marshalling")
+		}
+		xVal.SetBytes(xBytes)
+		yVal.SetBytes(yBytes)
+	}
+
+	point := ECPoint{
+		X: xVal,
+		Y: yVal,
+	}
+
+	return json.Marshal(&point)
+}
+
+func (e *p384Point) UnmarshalJSON(data []byte) error {
+	point := ECPoint{}
+	err := json.Unmarshal(data, &point)
+	if err != nil {
+		return err
+	}
+
+	// The special case encoding of the point at infinity.
+	if point.X.Cmp(big.NewInt(0)) == 0 && point.Y.Cmp(big.NewInt(0)) == 0 {
+		err = e.val.UnmarshalBinary([]byte{0})
+		return err
+	}
+
+	byteLen := 48
+
+	xBytes := point.X.Bytes()
+	yBytes := point.Y.Bytes()
+
+	tmp := make([]byte, 1+2*byteLen)
+	tmp[0] = 4
+	// Copy while maintaining leading zeroes.
+	copy(tmp[1+byteLen-len(xBytes):byteLen+1], point.X.Bytes())
+	copy(tmp[1+2*byteLen-len(yBytes):], point.Y.Bytes())
+	err = e.val.UnmarshalBinary(tmp)
+	return err
 }
 
 func P384() Group {
