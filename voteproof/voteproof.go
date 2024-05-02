@@ -130,7 +130,9 @@ func Prove(secret *big.Int, rp *big.Int, rq1, rq2 *big.Int, params ProofParams) 
 	// Exclusive upper bound
 	zUpperBound := new(big.Int).Exp(BigTwo, new(big.Int).Add(bxbc, big.NewInt(int64(params.bAbort))), nil)
 
+	// Abort loop
 	for {
+		// Setup
 		k, _ := rand.Int(rand.Reader, zUpperBound)
 		kp := new(big.Int).Mod(k, params.GFF.N) // k mod p for efficiency
 		kq := new(big.Int).Mod(k, params.GFF.N) // k mod q for efficiency
@@ -139,11 +141,13 @@ func Prove(secret *big.Int, rp *big.Int, rq1, rq2 *big.Int, params ProofParams) 
 		tq1, _ := rand.Int(rand.Reader, params.GEC.N)
 		tq2, _ := rand.Int(rand.Reader, params.GEC.N)
 
+		// Commitment
 		w := params.GFF.I.Element().BaseScale(tp)
 		Kp := pedersenCommit(kp, tp, params.GFF)
 		Kq1 := pedersenCommit(kq, tq1, params.GEC)
 		Kq2 := pedersenCommit(kq, tq2, params.GEC)
 
+		// Challenge
 		challenge := getFSChallenge(w, Kp, Kq1, Kq2, params.bc)
 		z := new(big.Int).Add(k, new(big.Int).Mul(challenge, secret))
 		if z.Cmp(zLowerBound) == -1 || z.Cmp(zUpperBound) != -1 {
@@ -151,28 +155,10 @@ func Prove(secret *big.Int, rp *big.Int, rq1, rq2 *big.Int, params ProofParams) 
 			continue
 		}
 
+		// Response
 		sp := new(big.Int).Mod(new(big.Int).Add(tp, new(big.Int).Mul(challenge, rp)), params.GFF.N)
 		sq1 := new(big.Int).Mod(new(big.Int).Add(tq1, new(big.Int).Mul(challenge, rq1)), params.GEC.N)
 		sq2 := new(big.Int).Mod(new(big.Int).Add(tq2, new(big.Int).Mul(challenge, rq2)), params.GEC.N)
-
-		/*
-			proof := SigmaProof{
-				SigmaCommit: SigmaCommit{
-					W:   w,
-					Kp:  Kp,
-					Kq1: Kq1,
-					Kq2: Kq2,
-				},
-				SigmaChallenge: SigmaChallenge{
-					Challenge: challenge,
-				},
-				SigmaResponse: SigmaResponse{
-					Sp:  sp,
-					Sq1: sq1,
-					Sq2: sq2,
-				},
-			}
-		*/
 
 		var proof SigmaProof
 		proof.W = w
@@ -190,6 +176,9 @@ func Prove(secret *big.Int, rp *big.Int, rq1, rq2 *big.Int, params ProofParams) 
 	}
 }
 
+// Verify verifies the transcript of the proof of secret equality across groups.
+// NB! The range proof(s) that assert "smallness" of the secret must be verified
+// prior to verifying the transcript. Verify does not verify the range proof(s).
 func (proof *SigmaProof) Verify(comm VerCommitments) bool {
 	bxbc := big.NewInt(int64(uint16(proof.Params.bx) + proof.Params.bc))
 	// Inclusive lower bound
@@ -197,15 +186,18 @@ func (proof *SigmaProof) Verify(comm VerCommitments) bool {
 	// Exclusive upper bound
 	zUpperBound := new(big.Int).Exp(BigTwo, new(big.Int).Add(bxbc, big.NewInt(int64(proof.Params.bAbort))), nil)
 
+	// Verify whether z lies within the safe (no-leak) range.
 	if proof.Z.Cmp(zLowerBound) == -1 || proof.Z.Cmp(zUpperBound) != -1 {
 		return false
 	}
 
+	// Verify challenge correctness.
 	challenge := getFSChallenge(proof.W, proof.Kp, proof.Kq1, proof.Kq2, proof.Params.bc)
 	if challenge.Cmp(proof.Challenge) != 0 {
 		return false
 	}
 
+	// Verify ElGamal ciphertext c1.
 	l := proof.Params.GFF.I.Element().BaseScale(proof.Sp)
 	r := proof.Params.GFF.I.Element().Scale(comm.Y, proof.Challenge)
 	r = proof.Params.GFF.I.Element().Add(r, proof.W)
@@ -213,11 +205,13 @@ func (proof *SigmaProof) Verify(comm VerCommitments) bool {
 		return false
 	}
 
+	// Verify ElGamal ciphertext c2.
 	if !sigmaPedersenCheck(proof.Z, proof.Sp, proof.Challenge, proof.Kp,
 		comm.Xp, proof.Params.GFF) {
 		return false
 	}
 
+	// Verify range proof commitments (range proofs themselves must have already been verified).
 	if !sigmaPedersenCheck(proof.Z, proof.Sq1, proof.Challenge, proof.Kq1,
 		comm.Xq1, proof.Params.GEC) {
 		return false
