@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"crypto/rand"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"github.com/takakv/msc-poc/group"
 	"math/big"
@@ -31,7 +32,7 @@ type ProofParams struct {
 	bx                  uint8  // Length of the secret.
 	bc                  uint16 // Length of the challenge.
 	bg                  uint16 // Length of the order of the smaller group.
-	bAbort              uint16 // Abort parameter.
+	bAbort              int    // Abort parameter.
 	RangeLo             uint16 // Inclusive lower bound of the range.
 	RangeHi             uint16 // Inclusive upper bound of the range.
 	AlgebraicParameters        // Group descriptions.
@@ -77,18 +78,22 @@ type SigmaProof struct {
 
 // Setup sets the common parameters for the vote correctness proof system.
 func Setup(lenSecret uint8, lenChallenge uint16, groupOrderLog uint16,
-	rangeLo uint16, rangeHi uint16,
-	AP AlgebraicParameters) ProofParams {
+	rangeLo uint16, rangeHi uint16, AP AlgebraicParameters) (ProofParams, error) {
 	params := ProofParams{}
 	params.bx = lenSecret
 	params.bc = lenChallenge
 	params.bg = groupOrderLog
-	params.bAbort = groupOrderLog - 1 - uint16(lenSecret) - lenChallenge
+	params.bAbort = int(groupOrderLog) - 1 - int(lenSecret) - int(lenChallenge)
 	params.RangeLo = rangeLo
 	params.RangeHi = rangeHi
 	params.GFF = AP.GFF
 	params.GEC = AP.GEC
-	return params
+
+	if params.bAbort < 1 {
+		return params, errors.New("inconsistent parameter choice")
+	}
+
+	return params, nil
 }
 
 func pedersenCommit(m *big.Int, r *big.Int, gp GroupParameters) group.Element {

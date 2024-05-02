@@ -5,6 +5,7 @@ import (
 	"github.com/takakv/msc-poc/bulletproofs"
 	"github.com/takakv/msc-poc/group"
 	"github.com/takakv/msc-poc/voteproof"
+	"os"
 	"strings"
 )
 import "math/big"
@@ -26,7 +27,7 @@ type PublicParameters struct {
 	RPParams voteproof.ProofParams
 }
 
-func setup(curveGroup group.Group) PublicParameters {
+func setup(curveGroup group.Group) (PublicParameters, error) {
 	// While the choice length is configurable in theory, it is fixed
 	// at 16 in the current code (the used types will not fit more).
 	// For Estonian elections, this parameter should be suitable for the
@@ -66,7 +67,10 @@ func setup(curveGroup group.Group) PublicParameters {
 	// W.l.o.g. this secret is not known to any one party.
 	elGamalPrivateKey := big.NewInt(13)
 
-	bpParams, _ := bulletproofs.Setup(65536, curveGroup)
+	bpParams, err := bulletproofs.Setup(65536, curveGroup)
+	if err != nil {
+		return PublicParameters{}, err
+	}
 
 	var fieldGroupParams voteproof.GroupParameters
 	fieldGroupParams.I = RFC3526ModPGroup3072
@@ -86,8 +90,11 @@ func setup(curveGroup group.Group) PublicParameters {
 	algebraicParams.GFF = fieldGroupParams
 	algebraicParams.GEC = curveGroupParams
 
-	rpParams := voteproof.Setup(choiceLength, challengeLength, uint16(curveGroupParams.N.BitLen()),
+	rpParams, err := voteproof.Setup(choiceLength, challengeLength, uint16(curveGroupParams.N.BitLen()),
 		candidateStart, candidateEnd, algebraicParams)
+	if err != nil {
+		return PublicParameters{}, err
+	}
 
 	var pp PublicParameters
 	pp.FFGroupParams = fieldGroupParams
@@ -98,7 +105,7 @@ func setup(curveGroup group.Group) PublicParameters {
 	pp.BPParams = bpParams
 	pp.RPParams = rpParams
 
-	return pp
+	return pp, nil
 }
 
 func main() {
@@ -115,7 +122,10 @@ func main() {
 		}
 		fmt.Println(strings.Repeat("=", sepLen))
 		fmt.Println("Generating public parameters for group:", g.Name())
-		pp := setup(g)
+		pp, err := setup(g)
+		if err != nil {
+			os.Exit(1)
+		}
 
 		fmt.Println(strings.Repeat("-", sepLen))
 		fmt.Println("Vote casting")
