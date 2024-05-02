@@ -1,6 +1,8 @@
 package group
 
 import (
+	"encoding"
+	"encoding/json"
 	"math/big"
 )
 
@@ -18,8 +20,6 @@ type Element interface {
 	// BaseScale performs the group operation s times with the
 	//group's generator, sets the receiver to the result, and returns it.
 	BaseScale(s *big.Int) Element
-	// String returns a string representation of the element.
-	String() string
 	// Set the receiver to X, and returns it.
 	Set(X Element) Element
 	// SetBytes recovers a group element from a byte representation,
@@ -38,6 +38,18 @@ type Element interface {
 	// FieldOrder returns the number of elements in the field
 	// over which the group is defined.
 	FieldOrder() *big.Int
+	// String returns a string representation of the element.
+	String() string
+	// BinaryMarshaler returns a byte representation of the element.
+	encoding.BinaryMarshaler
+	// BinaryUnmarshaler recovers an element from a byte representation
+	// produced by encoding.BinaryMarshaler.
+	encoding.BinaryUnmarshaler
+	// Marshaler returns a JSON representation of the element.
+	json.Marshaler
+	// Unmarshaler recovers an element from a JSON representation
+	// produced by json.Marshaler.
+	json.Unmarshaler
 }
 
 // Group represents a prime-order group over a prime-order field.
@@ -57,8 +69,8 @@ type Group interface {
 	// random scalar r and returning rG.
 	Random() Element
 
-	// P is the prime-order of the field.
+	// P returns the prime-order of the field.
 	P() *big.Int
-	// N is the prime-order of the group.
+	// N returns the prime-order of the group.
 	N() *big.Int
 }

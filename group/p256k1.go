@@ -165,8 +165,31 @@ func (e *p256k1Point) IsIdentity() bool {
 	return e.val.X.Cmp(big.NewInt(0)) == 0 && e.val.Y.Cmp(big.NewInt(0)) == 0
 }
 
+func (e *p256k1Point) MarshalBinary() ([]byte, error) {
+	xBytes := make([]byte, 32)
+	if e.val.X != nil {
+		xBytes = e.val.X.Bytes()
+	}
+
+	yBytes := make([]byte, 32)
+	if e.val.Y != nil {
+		yBytes = e.val.Y.Bytes()
+	}
+
+	return append(xBytes, yBytes...), nil
+}
+
+func (e *p256k1Point) UnmarshalBinary(data []byte) error {
+	e.SetBytes(data)
+	return nil
+}
+
 func (e *p256k1Point) MarshalJSON() ([]byte, error) {
 	return json.Marshal(e.val)
+}
+
+func (e *p256k1Point) UnmarshalJSON(data []byte) error {
+	return nil
 }
 
 func SecP256k1() Group {

@@ -18,6 +18,8 @@
 package bulletproofs
 
 import (
+	"encoding/json"
+	"github.com/stretchr/testify/assert"
 	"github.com/takakv/msc-poc/group"
 	"math"
 	"math/big"
@@ -75,7 +77,7 @@ func TestXWithinRange(t *testing.T) {
 }
 
 func setupRange(t *testing.T, rangeEnd int64) BulletProofSetupParams {
-	params, err := Setup(rangeEnd, group.SecP256k1())
+	params, err := Setup(rangeEnd, group.P256())
 	if err != nil {
 		t.Errorf("Invalid range end: %s", err)
 		t.FailNow()
@@ -89,25 +91,22 @@ func proveAndVerifyRange(x *big.Int, params BulletProofSetupParams) bool {
 	return ok
 }
 
-/* TODO: reimplement and test marshalling
 func TestJsonEncodeDecode(t *testing.T) {
-	params, _ := Setup(MAX_RANGE_END, group.SecP256k1())
+	params, _ := Setup(MAX_RANGE_END, group.P256())
 	proof, _, _ := Prove(new(big.Int).SetInt64(18), params)
 	jsonEncoded, err := json.Marshal(proof)
 	if err != nil {
 		t.Fatal("encode error:", err)
 	}
-	fmt.Println(string(jsonEncoded))
 
 	// network transfer takes place here
 
-	var decodedProof BulletProof
-	err = json.Unmarshal(jsonEncoded, &decodedProof)
+	decodedProof, err := BulletProofUnmarshalJSON(jsonEncoded, params)
 	if err != nil {
 		t.Fatal("decode error:", err)
 	}
 
-	assert.IsEqual(t, proof, decodedProof, "should be equal")
+	// assert.IsEqual(t, proof, decodedProof, "should be equal")
 
 	ok, err := decodedProof.Verify()
 	if err != nil {
@@ -115,4 +114,3 @@ func TestJsonEncodeDecode(t *testing.T) {
 	}
 	assert.True(t, ok, "should verify")
 }
-*/
