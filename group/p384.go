@@ -24,6 +24,10 @@ func (g *p384Group) Name() string {
 	return g.name
 }
 
+func (g *p384Group) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&GroupId{g.name})
+}
+
 func (g *p384Group) P() *big.Int {
 	return g.fieldOrder
 }

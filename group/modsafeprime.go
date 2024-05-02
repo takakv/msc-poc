@@ -2,6 +2,7 @@ package group
 
 import (
 	"crypto/rand"
+	"encoding/json"
 	"math/big"
 	"strings"
 )
@@ -20,6 +21,10 @@ type ModPGroup struct {
 
 func (g *ModPGroup) Name() string {
 	return g.name
+}
+
+func (g *ModPGroup) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&GroupId{g.name})
 }
 
 func (g *ModPGroup) equals(h Group) bool {
