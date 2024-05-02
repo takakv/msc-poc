@@ -73,4 +73,7 @@ type Group interface {
 	P() *big.Int
 	// N returns the prime-order of the group.
 	N() *big.Int
+
+	// Marshaler returns a JSON description of the group.
+	json.Marshaler
 }
