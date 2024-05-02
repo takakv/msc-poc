@@ -27,28 +27,3 @@ package bulletproofs
 var SEEDH = "BulletproofsDoesNotNeedTrustedSetupH"
 var MAX_RANGE_END int64 = 4294967296 // 2**32
 var MAX_RANGE_END_EXPONENT = 32      // 2**32
-
-/*
-func Setup(n uint8) BpParams {
-	suite := edwards25519.NewBlakeSHA256Ed25519()
-	// Generate a random secret to compute point H.
-	// To make the setup transparent, obtain H with a hash-to-point function.
-	sec := suite.Scalar().Pick(suite.RandomStream())
-
-	params := BpParams{}
-	params.group = suite
-	params.ORDER, _ = new(big.Int).SetString("1000000000000000000000000000000014def9dea2f79cd65812631a5cf5d3ed", 16)
-	params.I = suite.Point().Base()
-	params.H = suite.Point().Mul(sec, nil)
-	params.L = int(n)
-	params.Gg = make([]kyber.Point, params.L)
-	params.Hh = make([]kyber.Point, params.L)
-	for i := 0; i < params.L; i++ {
-		sec := suite.Scalar().Pick(suite.RandomStream())
-		params.Gg[i] = suite.Point().Mul(sec, nil)
-		sec = suite.Scalar().Pick(suite.RandomStream())
-		params.Hh[i] = suite.Point().Mul(sec, nil)
-	}
-	return params
-}
-*/

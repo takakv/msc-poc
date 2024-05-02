@@ -148,6 +148,24 @@ func (e *ModPElement) MapToGroup(s string) (Element, error) {
 	panic("not implemented")
 }
 
+func (e *ModPElement) MarshalBinary() ([]byte, error) {
+	return e.val.Bytes(), nil
+}
+
+func (e *ModPElement) UnmarshalBinary(data []byte) error {
+	e.val = new(big.Int).SetBytes(data)
+	return nil
+}
+
+func (e *ModPElement) MarshalJSON() ([]byte, error) {
+	return e.val.MarshalJSON()
+}
+
+func (e *ModPElement) UnmarshalJSON(data []byte) error {
+	err := e.val.UnmarshalJSON(data)
+	return err
+}
+
 func NewModPGroup(name string, fieldOrder, generator string) Group {
 	repr := strings.Join(strings.Fields(fieldOrder), "")
 

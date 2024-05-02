@@ -102,11 +102,10 @@ func setup(curveGroup group.Group) PublicParameters {
 }
 
 func main() {
-	SecP256k1Group := group.SecP256k1()
 	P256Group := group.P256()
 	P384Group := group.P384()
 
-	groups := []group.Group{SecP256k1Group, P256Group, P384Group}
+	groups := []group.Group{P256Group, P384Group}
 
 	sepLen := 60
 

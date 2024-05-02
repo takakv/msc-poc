@@ -32,9 +32,9 @@ var P256Group = P256()
 
 var allGroups = []Group{
 	RFC3526ModPGroup3072,
-	SecP256k1Group,
-	P384Group,
+	// SecP256k1Group,
 	P256Group,
+	P384Group,
 }
 
 func TestGroup(t *testing.T) {
@@ -49,7 +49,8 @@ func TestGroup(t *testing.T) {
 		// t.Run(n+"/CSelect", func(tt *testing.T) { testCSelect(tt, testTimes, g) })
 		t.Run(n+"/Order", func(tt *testing.T) { testOrder(tt, testTimes, g) })
 		t.Run(n+"/Set", func(tt *testing.T) { testSet(tt, g) })
-		// t.Run(n+"/Marshal", func(tt *testing.T) { testMarshal(tt, testTimes, g) })
+		t.Run(n+"/MarshalBinary", func(tt *testing.T) { testMarshalBinary(tt, testTimes, g) })
+		t.Run(n+"/MarshalJSON", func(tt *testing.T) { testMarshalJSON(tt, testTimes, g) })
 		// t.Run(n+"/Scalar", func(tt *testing.T) { testScalar(tt, testTimes, g) })
 	}
 }
@@ -90,6 +91,70 @@ func testSet(t *testing.T, g Group) {
 	Q.Set(P)
 	if !Q.IsEqual(P) {
 		t.Error("testSet | Got:", false, "Wanted:", true)
+	}
+}
+
+func testMarshalBinary(t *testing.T, testTimes int, g Group) {
+	I := g.Identity()
+	got, err := I.MarshalBinary()
+	if err != nil {
+		t.Error("testMarshalBinary | I:", I)
+	}
+
+	II := g.Element()
+	err = II.UnmarshalBinary(got)
+	if err != nil || !I.IsEqual(II) {
+		t.Error("testMarshalBinary | I:", I, "II:", II)
+	}
+
+	gotEl := g.Element()
+	for i := 0; i < testTimes; i++ {
+		x := g.Random()
+		enc, err := x.MarshalBinary()
+		if err != nil {
+			t.Error(err)
+		}
+
+		err = gotEl.UnmarshalBinary(enc)
+		if !x.IsEqual(gotEl) {
+			t.Error("testMarshalBinary | Got:", gotEl, "Wanted:", x)
+		}
+	}
+}
+
+func testMarshalJSON(t *testing.T, testTimes int, g Group) {
+	I := g.Identity()
+	got, err := I.MarshalJSON()
+	if err != nil {
+		t.Error("testMarshalJSON | I:", I)
+	}
+
+	II := g.Element()
+	err = II.UnmarshalJSON(got)
+	if err != nil || !I.IsEqual(II) {
+		fmt.Println(err)
+		t.Error("testMarshalJSON | I:", I, "II:", II)
+	}
+
+	gotEl := g.Element()
+	for i := 0; i < testTimes; i++ {
+		x := g.Random()
+		enc, err := x.MarshalJSON()
+		if err != nil {
+			t.Error(err)
+		}
+
+		fmt.Println(string(enc))
+
+		err = gotEl.UnmarshalJSON(enc)
+		if err != nil {
+			t.Error(err)
+			continue
+		}
+
+		if !x.IsEqual(gotEl) {
+			t.Error("testMarshalJSON | Got:", gotEl, "Wanted:", x)
+		}
 	}
 }
 
