@@ -35,7 +35,7 @@ func setup(curveGroup group.Group) PublicParameters {
 
 	// In practice, since the proof is made non-interactive with FS, the
 	// challenge should be 256 bits long for 128 bits of collision resistance.
-	const challengeLength uint16 = 256
+	const challengeLength uint16 = 128
 
 	// The first candidate number is fixed at 101.
 	const candidateStart uint16 = 101
@@ -86,7 +86,7 @@ func setup(curveGroup group.Group) PublicParameters {
 	algebraicParams.GFF = fieldGroupParams
 	algebraicParams.GEC = curveGroupParams
 
-	rpParams := voteproof.Setup(choiceLength, challengeLength, 253,
+	rpParams := voteproof.Setup(choiceLength, challengeLength, uint16(curveGroupParams.N.BitLen()),
 		candidateStart, candidateEnd, algebraicParams)
 
 	var pp PublicParameters
