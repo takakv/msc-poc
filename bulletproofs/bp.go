@@ -110,7 +110,7 @@ func Prove(secret *big.Int, params BulletProofSetupParams) (BulletProof, *big.In
 	// First phase: page 19                                                      //
 	// ////////////////////////////////////////////////////////////////////////////
 
-	// Sample gamma and commit to v.
+	// Sample randomness gamma and commit to v.
 	gamma, _ := rand.Int(rand.Reader, mod)
 	V := PedersenCommit(secret, gamma, params.H, params.GP)
 
@@ -135,6 +135,7 @@ func Prove(secret *big.Int, params BulletProofSetupParams) (BulletProof, *big.In
 	// ////////////////////////////////////////////////////////////////////////////
 	// Second phase: page 20                                                     //
 	// ////////////////////////////////////////////////////////////////////////////
+
 	tau1, _ := rand.Int(rand.Reader, mod) // (52)
 	tau2, _ := rand.Int(rand.Reader, mod) // (52)
 
@@ -408,27 +409,29 @@ func commitVector(aL, aR []int64, alpha *big.Int, H group.Element,
 	return R
 }
 
-// delta(y,z) = (z-z^2) . < 1^n, y^n > - z^3 . < 1^n, 2^n >
+// delta(y,z) = (z - z^2) . < 1Pow, yPow > - z^3 . < 1Pow, 2Pow >
 func (params *BulletProofSetupParams) delta(y, z *big.Int) *big.Int {
 	mod := params.GP.N()
 	result := new(big.Int)
 
+	onePow, _ := VectorCopy(new(big.Int).SetInt64(1), params.N)
+	twoPow := powerOf(big.NewInt(2), params.N, params.GP)
+	yPow := powerOf(y, params.N, params.GP)
+
+	zSquared := new(big.Int).Mod(new(big.Int).Mul(z, z), mod)
+	zCubed := new(big.Int).Mod(new(big.Int).Mul(zSquared, z), mod)
+
 	// (z-z^2)
-	z2 := new(big.Int).Mod(new(big.Int).Mul(z, z), mod)
-	t1 := new(big.Int).Mod(new(big.Int).Sub(z, z2), mod)
+	t1 := new(big.Int).Mod(new(big.Int).Sub(z, zSquared), mod)
 
 	// < 1^n, y^n >
-	v1, _ := VectorCopy(new(big.Int).SetInt64(1), params.N)
-	vy := powerOf(y, params.N, params.GP)
-	t2, _ := ScalarProduct(v1, vy, params.GP)
+	t2, _ := ScalarProduct(onePow, yPow, params.GP)
 
 	// < 1^n, 2^n >
-	p2n := powerOf(new(big.Int).SetInt64(2), params.N, params.GP)
-	sp12, _ := ScalarProduct(v1, p2n, params.GP)
+	sp12, _ := ScalarProduct(onePow, twoPow, params.GP)
 
 	// z3 . < 1^n, 2^n >
-	z3 := new(big.Int).Mod(new(big.Int).Mul(z2, z), mod)
-	t3 := new(big.Int).Mod(new(big.Int).Mul(z3, sp12), mod)
+	t3 := new(big.Int).Mod(new(big.Int).Mul(zCubed, sp12), mod)
 
 	result.Mod(t2.Mul(t2, t1), mod)
 	result.Mod(result.Sub(result, t3), mod)
