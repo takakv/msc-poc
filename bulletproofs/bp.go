@@ -62,7 +62,6 @@ type BulletProof struct {
 	Mu                *big.Int
 	Tprime            *big.Int
 	InnerProductProof InnerProductProof
-	Commit            group.Element
 	Params            BulletProofSetupParams
 }
 
@@ -220,7 +219,7 @@ func Prove(secret *big.Int, params BulletProofSetupParams) (BulletProof, *big.In
 		return proof, gamma, setupErr
 	}
 	commit := commitInnerProduct(params.Gg, hprime, bl, br, params.GP)
-	proofip, _ := proveInnerProduct(bl, br, commit, tprime, ipp)
+	ipProof, _ := proveInnerProduct(bl, br, commit, tprime, ipp)
 
 	proof.V = V
 	proof.A = A
@@ -230,8 +229,7 @@ func Prove(secret *big.Int, params BulletProofSetupParams) (BulletProof, *big.In
 	proof.Taux = taux
 	proof.Mu = mu
 	proof.Tprime = tprime
-	proof.InnerProductProof = proofip
-	proof.Commit = commit
+	proof.InnerProductProof = ipProof
 	proof.Params = params
 
 	return proof, gamma, nil
@@ -321,7 +319,7 @@ func (proof *BulletProof) Verify() (bool, error) {
 
 	// h^mu
 	rP := params.GP.Element().Scale(params.H, proof.Mu)
-	rP.Add(rP, proof.Commit)
+	rP.Add(rP, proof.InnerProductProof.P)
 
 	// Subtract lhs and rhs and compare with point at infinity
 	rP.Subtract(rP, lP)
