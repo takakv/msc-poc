@@ -45,16 +45,12 @@ type InnerProductParams struct {
 InnerProductProof contains the elements used to verify the Inner Product Proof.
 */
 type InnerProductProof struct {
-	N      int64
-	Ls     []group.Element
-	Rs     []group.Element
-	U      group.Element
 	P      group.Element // Commitment
 	Cc     *big.Int      // Inner product
-	Gg     group.Element
-	Hh     group.Element
 	A      *big.Int
 	B      *big.Int
+	L      []group.Element
+	R      []group.Element
 	Params InnerProductParams
 }
 
@@ -150,13 +146,9 @@ func computeBipRecursive(a, b []*big.Int, g, h []group.Element, u, P group.Eleme
 		// recursion end
 		proof.A = a[0]
 		proof.B = b[0]
-		proof.Gg = g[0]
-		proof.Hh = h[0]
 		proof.P = P
-		proof.U = u
-		proof.Ls = Ls
-		proof.Rs = Rs
-		proof.N = n
+		proof.L = Ls
+		proof.R = Rs
 		return proof
 	}
 
@@ -214,7 +206,6 @@ func computeBipRecursive(a, b []*big.Int, g, h []group.Element, u, P group.Eleme
 	// recursion computeBipRecursive(g',h',u,P'; a', b')                  // (35)
 	proof = computeBipRecursive(aprime, bprime, gprime, hprime, u, Pprime, nprime, Ls, Rs, SP)
 
-	proof.N = n
 	return proof
 }
 
@@ -223,7 +214,7 @@ Verify is responsible for the verification of the Inner Product Proof.
 */
 func (proof InnerProductProof) Verify() (bool, error) {
 
-	logn := len(proof.Ls)
+	logn := len(proof.L)
 	var (
 		x, xinv, x2, x2inv                   *big.Int
 		ngprime, nhprime, ngprime2, nhprime2 []group.Element
@@ -235,12 +226,12 @@ func (proof InnerProductProof) Verify() (bool, error) {
 	// Fiat-Shamir
 	x, _ = hashIP(gprime, hprime, proof.P, proof.Cc) // (6) & (7)
 
-	Pprime, _ := computePP(proof.P, proof.Cc, x, proof.Params) // (8)
+	Pprime, ux := computePP(proof.P, proof.Cc, x, proof.Params) // (8)
 
-	nprime := proof.N
+	nprime := len(gprime)
 	for i := int64(0); i < int64(logn); i++ {
-		nprime = nprime / 2                        // (20)
-		x, _, _ = HashBP(proof.Ls[i], proof.Rs[i]) // (26)
+		nprime = nprime / 2                      // (20)
+		x, _, _ = HashBP(proof.L[i], proof.R[i]) // (26)
 		xinv = bn.ModInverse(x, proof.Params.SP.N())
 		// Compute g' = g[:n']^(x^-1) * g[n':]^(x)                            // (29)
 		ngprime = vectorScalarExp(gprime[:nprime], xinv, proof.Params.SP)
@@ -253,8 +244,8 @@ func (proof InnerProductProof) Verify() (bool, error) {
 		// Compute P' = L^(x^2).P.R^(x^-2)                                    // (31)
 		x2 = bn.Mod(bn.Multiply(x, x), proof.Params.SP.N())
 		x2inv = bn.ModInverse(x2, proof.Params.SP.N())
-		Pprime.Add(Pprime, proof.Params.SP.Element().Scale(proof.Ls[i], x2))
-		Pprime.Add(Pprime, proof.Params.SP.Element().Scale(proof.Rs[i], x2inv))
+		Pprime.Add(Pprime, proof.Params.SP.Element().Scale(proof.L[i], x2))
+		Pprime.Add(Pprime, proof.Params.SP.Element().Scale(proof.R[i], x2inv))
 	}
 
 	// c == a*b and checks if P = g^a.h^b.u^c                                     // (16)
@@ -264,7 +255,7 @@ func (proof InnerProductProof) Verify() (bool, error) {
 	rhs := proof.Params.SP.Element().Scale(gprime[0], proof.A)
 	hb := proof.Params.SP.Element().Scale(hprime[0], proof.B)
 	rhs = proof.Params.SP.Element().Add(rhs, hb)
-	rhs = proof.Params.SP.Element().Add(rhs, proof.Params.SP.Element().Scale(proof.U, ab))
+	rhs = proof.Params.SP.Element().Add(rhs, proof.Params.SP.Element().Scale(ux, ab))
 	// Compute inverse of left hand side
 	nP := proof.Params.SP.Element().Negate(Pprime)
 	nP.Add(nP, rhs)
