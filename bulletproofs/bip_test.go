@@ -27,30 +27,26 @@ import (
 Test Inner Product argument where <a,b>=c.
 */
 func TestInnerProduct(t *testing.T) {
-	var (
-		a []*big.Int
-		b []*big.Int
-	)
-	c := new(big.Int).SetInt64(142)
+	N := 4
 
-	var SecP256k1Group = group.SecP256k1()
-
-	innerProductParams, _ := setupInnerProduct(nil, nil, nil, c, 4, SecP256k1Group)
-
-	a = make([]*big.Int, innerProductParams.N)
+	a := make([]*big.Int, N)
 	a[0] = new(big.Int).SetInt64(2)
 	a[1] = new(big.Int).SetInt64(-1)
 	a[2] = new(big.Int).SetInt64(10)
 	a[3] = new(big.Int).SetInt64(6)
-	b = make([]*big.Int, innerProductParams.N)
+	b := make([]*big.Int, N)
 	b[0] = new(big.Int).SetInt64(1)
 	b[1] = new(big.Int).SetInt64(2)
 	b[2] = new(big.Int).SetInt64(10)
 	b[3] = new(big.Int).SetInt64(7)
 
-	commit := commitInnerProduct(innerProductParams.Gg, innerProductParams.Hh, a, b, innerProductParams.SP)
+	c := new(big.Int).SetInt64(142)
 
-	proof, _ := proveInnerProduct(a, b, commit, innerProductParams)
+	var SecP256k1Group = group.SecP256k1()
+	innerProductParams, _ := setupInnerProduct(nil, nil, 4, SecP256k1Group)
+	commitment := commitInnerProduct(innerProductParams.Gg, innerProductParams.Hh, a, b, innerProductParams.SP)
+
+	proof, _ := proveInnerProduct(a, b, commitment, c, innerProductParams)
 	ok, _ := proof.Verify()
 	if ok != true {
 		t.Errorf("Assert failure: expected true, actual: %t", ok)
