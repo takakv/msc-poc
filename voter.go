@@ -11,10 +11,10 @@ import (
 
 // BallotData contains elements that assert the correctness of a vote.
 type BallotData struct {
-	ballot    ElGamalCiphertext        // The ElGamal ciphertext, i.e. the encrypted ballot.
-	bpLower   bulletproofs.BulletProof // Bulletproof for the lower bound.
-	bpUpper   bulletproofs.BulletProof // Bulletproof for the upper bound.
-	voteProof voteproof.SigmaProof     // Proof of vote correctness.
+	Ballot    ElGamalCiphertext        `json:"ballot"`    // The ElGamal ciphertext, i.e. the encrypted ballot.
+	BpLower   bulletproofs.BulletProof `json:"bpLower"`   // Bulletproof for the lower bound.
+	BpUpper   bulletproofs.BulletProof `json:"bpUpper"`   // Bulletproof for the upper bound.
+	VoteProof voteproof.SigmaProof     `json:"voteProof"` // Proof of vote correctness.
 
 }
 
@@ -25,7 +25,6 @@ func castVote(pp PublicParameters) BallotData {
 	fmt.Println("Chosen candidate:", choice)
 
 	ciphertext, rp := encryptVote(choice, pp.EGPK, pp.FFGroupParams.I)
-	// fmt.Println("ciphertext:", ciphertext)
 
 	start := time.Now()
 
@@ -40,11 +39,12 @@ func castVote(pp PublicParameters) BallotData {
 	duration := time.Since(start)
 	fmt.Println("Prove time:", duration)
 
-	var bd BallotData
-	bd.ballot = ciphertext
-	bd.bpLower = bp1
-	bd.bpUpper = bp2
-	bd.voteProof = rangeProof
+	bd := BallotData{
+		Ballot:    ciphertext,
+		BpLower:   bp1,
+		BpUpper:   bp2,
+		VoteProof: rangeProof,
+	}
 
 	return bd
 }
