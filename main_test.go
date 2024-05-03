@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"github.com/takakv/msc-poc/group"
+	"os"
 	"testing"
 )
 
@@ -35,11 +36,21 @@ func unmarshalAndVerify(b []byte, pp PublicParameters) error {
 }
 
 func TestTestData(t *testing.T) {
+	p256data, err := os.ReadFile("./testdata/P256rp.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	p384data, err := os.ReadFile("./testdata/P384rp.json")
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	P256Group := group.P256()
 	P384Group := group.P384()
 
 	groups := []group.Group{P256Group, P384Group}
-	data := [][]byte{p256RpTest, p384RpTest}
+	data := [][]byte{p256data, p384data}
 
 	for i, g := range groups {
 		pp, err := setup(g)
