@@ -19,42 +19,19 @@ package bulletproofs
 
 import (
 	"crypto/rand"
-	"errors"
 	"fmt"
 	"github.com/takakv/msc-poc/group"
-	"math"
 	"math/big"
 
 	. "github.com/takakv/msc-poc/util"
 )
 
 /*
-BulletProofSetupParams is the structure that stores the parameters for
-the Zero Knowledge Proof system.
-*/
-type BulletProofSetupParams struct {
-	// N is the bit-length of the range.
-	N int64
-	// G is the Elliptic Curve generator.
-	G group.Element
-	// H is a new generator, computed using MapToGroup function,
-	// such that there is no discrete logarithm relation with G.
-	H group.Element
-	// Gg is a set of generators obtained using MapToGroup used to
-	// compute Pedersen vector commitments.
-	Gg []group.Element
-	// Hh is a set of generators obtained using MapToGroup used to
-	// compute Pedersen vector commitments.
-	Hh []group.Element
-	GP group.Group
-}
-
-/*
 BulletProof is the structure that contains the elements that are necessary for
 the verification of the Zero Knowledge Proof.
 */
-type BulletProof struct {
-	V                 group.Element
+type MultiBulletProof struct {
+	Vs                []group.Element
 	A                 group.Element
 	S                 group.Element
 	T1                group.Element
@@ -67,58 +44,46 @@ type BulletProof struct {
 }
 
 /*
-Setup is responsible for computing the common parameters.
-Only works for ranges to 0 to 2^n, where n is a power of 2 and n <= 32
-TODO: allow n > 32 (need uint64 for that).
-*/
-func Setup(b int64, SP group.Group) (BulletProofSetupParams, error) {
-	if !IsPowerOfTwo(b) {
-		return BulletProofSetupParams{}, errors.New("range end is not a power of 2")
-	}
-
-	params := BulletProofSetupParams{}
-	params.GP = SP
-	params.G = SP.Element().BaseScale(big.NewInt(1))
-	params.H, _ = SP.Element().MapToGroup(SEEDH)
-	params.N = int64(math.Log2(float64(b)))
-	if !IsPowerOfTwo(params.N) {
-		return BulletProofSetupParams{}, fmt.Errorf("range end is a power of 2, but it's exponent should also be. Exponent: %d", params.N)
-	}
-	if params.N > 32 {
-		return BulletProofSetupParams{}, errors.New("range end can not be greater than 2**32")
-	}
-	params.Gg = make([]group.Element, params.N)
-	params.Hh = make([]group.Element, params.N)
-	for i := int64(0); i < params.N; i++ {
-		params.Gg[i], _ = SP.Element().MapToGroup(SEEDH + "g" + fmt.Sprint(i))
-		params.Hh[i], _ = SP.Element().MapToGroup(SEEDH + "h" + fmt.Sprint(i))
-	}
-	return params, nil
-}
-
-/*
-Prove computes the Bulletproof range proof.
-The documentation and comments are based on the ePrint version of Bulletproofs:
+MultiProve computes the aggregated ZKRP for multiple values.
+The documentation and comments are based on the ePrint version of the Bulletproofs paper:
 https://eprint.iacr.org/2017/1066.pdf
 */
-func Prove(secret *big.Int, params BulletProofSetupParams) (BulletProof, *big.Int, error) {
-	proof := BulletProof{}
+func MultiProve(secrets []*big.Int, params BulletProofSetupParams) (MultiBulletProof, []*big.Int, error) {
+	proof := MultiBulletProof{}
 
 	mod := params.GP.N()
+
+	m := len(secrets)
+	bitsPerValue := int(params.N) / m
+
+	commitments := make([]group.Element, m)
+	gammas := make([]*big.Int, m)
+	aLConcat := make([]int64, params.N)
+	aRConcat := make([]int64, params.N)
 
 	// ////////////////////////////////////////////////////////////////////////////
 	// First phase: page 19                                                      //
 	// ////////////////////////////////////////////////////////////////////////////
 
-	// Sample randomness gamma and commit to v.
-	gamma, _ := rand.Int(rand.Reader, mod)
-	V := PedersenCommit(secret, gamma, params.H, params.GP)
+	for j := range secrets {
+		// Sample randomness gamma and commit to v.
+		gamma, _ := rand.Int(rand.Reader, mod)
+		commitments[j] = PedersenCommit(secrets[j], gamma, params.H, params.GP)
+		gammas[j] = gamma
 
-	// aL, aR and commitment: (A, alpha)
-	aL := Decompose(secret, 2, params.N)                                                  // (41)
-	aR, _ := computeAR(aL)                                                                // (42)
-	alpha, _ := rand.Int(rand.Reader, mod)                                                // (43)
-	A := commitVector(aL, aR, alpha, params.H, params.Gg, params.Hh, params.N, params.GP) // (44)
+		// aL, aR
+		aL := Decompose(secrets[j], 2, int64(bitsPerValue)) // (41)
+		aR, _ := computeAR(aL)                              // (42)
+
+		for i := range aR {
+			aLConcat[bitsPerValue*j+i] = aL[i]
+			aRConcat[bitsPerValue*j+i] = aR[i]
+		}
+	}
+
+	// Commitment: (A, alpha)
+	alpha, _ := rand.Int(rand.Reader, mod)                                                            // (43)
+	A := commitVector(aRConcat, aRConcat, alpha, params.H, params.Gg, params.Hh, params.N, params.GP) // (44)
 
 	// sL, sR and commitment: (S, rho)
 	sL := sampleRandomVector(params.N, params.GP)                                          // (45)
@@ -153,13 +118,19 @@ func Prove(secret *big.Int, params BulletProofSetupParams) (BulletProof, *big.In
 	yPow := powerOf(y, params.N, params.GP)
 
 	// 2Pow . z ^ 2
-	powersOf2 := powerOf(big.NewInt(2), params.N, params.GP)
-	zSquared := new(big.Int).Mul(z, z)
-	powersOf2TimesZSquared, _ := VectorScalarMul(powersOf2, zSquared, mod)
+	powersOf2 := powerOf(big.NewInt(2), int64(bitsPerValue), params.GP)
+
+	zPowersTimesTwoVec := make([]*big.Int, params.N)
+	for j := 0; j < m; j++ {
+		zp := new(big.Int).Exp(z, big.NewInt(2+int64(j)), mod)
+		for i := 0; i < bitsPerValue; i++ {
+			zPowersTimesTwoVec[j*bitsPerValue+i] = new(big.Int).Mod(new(big.Int).Mul(powersOf2[i], zp), mod)
+		}
+	}
 
 	// Vectors of big integers are needed for some functions.
-	aLb, _ := VectorConvertToBig(aL, params.N)
-	aRb, _ := VectorConvertToBig(aR, params.N)
+	aLb, _ := VectorConvertToBig(aLConcat, params.N)
+	aRb, _ := VectorConvertToBig(aRConcat, params.N)
 
 	// l(x) = (aL - z . 1Pow) + sL . x
 	l0 := VectorAddConst(aLb, new(big.Int).Neg(z), mod)
@@ -171,7 +142,7 @@ func Prove(secret *big.Int, params BulletProofSetupParams) (BulletProof, *big.In
 
 	// r(x) = yPow ∘ (aR + z . 1Pow + sR . x) + z^2 . 2Pow
 	r0, _ := VectorMul(yPow, aRzn, mod)
-	r0, _ = VectorAdd(r0, powersOf2TimesZSquared, mod)
+	r0, _ = VectorAdd(r0, zPowersTimesTwoVec, mod)
 	r1, _ := VectorMul(yPow, sR, mod)
 
 	t1left := VectorInnerProduct(l1, r0, mod)  // <l1, r0>
@@ -198,10 +169,10 @@ func Prove(secret *big.Int, params BulletProofSetupParams) (BulletProof, *big.In
 	bl, _ := VectorAdd(l0, sLx, mod)      // l(x)
 
 	// r = r(x) = yPow ∘ (aR + z . 1Pow + sR . x) + z^2 . 2Pow // (59)
-	sRx, _ := VectorScalarMul(sR, x, mod)                // sR . x
-	tmp, _ := VectorAdd(aRzn, sRx, mod)                  // (aR + z . 1Pow + sR . x)
-	tmp, _ = VectorMul(yPow, tmp, mod)                   // yPow ∘ (aR + z . 1Pow + sR . x)
-	br, _ := VectorAdd(tmp, powersOf2TimesZSquared, mod) // r(x)
+	sRx, _ := VectorScalarMul(sR, x, mod)            // sR . x
+	tmp, _ := VectorAdd(aRzn, sRx, mod)              // (aR + z . 1Pow + sR . x)
+	tmp, _ = VectorMul(yPow, tmp, mod)               // yPow ∘ (aR + z . 1Pow + sR . x)
+	br, _ := VectorAdd(tmp, zPowersTimesTwoVec, mod) // r(x)
 
 	// th = <bl, br>
 	th, _ := ScalarProduct(bl, br, params.GP) // (60)
@@ -209,7 +180,15 @@ func Prove(secret *big.Int, params BulletProofSetupParams) (BulletProof, *big.In
 	// tau_x = tau2 . x^2 + tau1 . x + z^2 . gamma // (61)
 	tauX := new(big.Int).Mul(tau2, new(big.Int).Mul(x, x))
 	tauX.Add(tauX, new(big.Int).Mul(tau1, x))
-	tauX.Add(tauX, new(big.Int).Mul(zSquared, gamma))
+
+	vecRandomnessTotal := big.NewInt(0)
+	for j := 0; j < m; j++ {
+		zp := new(big.Int).Exp(z, big.NewInt(2+int64(j)), mod)
+		tmp1 := new(big.Int).Mul(gammas[j], zp)
+		vecRandomnessTotal = new(big.Int).Mod(new(big.Int).Add(vecRandomnessTotal, tmp1), mod)
+	}
+
+	tauX.Add(tauX, vecRandomnessTotal)
 	tauX.Mod(tauX, mod)
 
 	// mu = alpha + rho . x // (62)
@@ -227,27 +206,30 @@ func Prove(secret *big.Int, params BulletProofSetupParams) (BulletProof, *big.In
 	// Inner product over (g, h', P.h^-mu, t')
 	ipp, setupErr := setupInnerProduct(params.Gg, hp, params.N, params.GP)
 	if setupErr != nil {
-		return proof, gamma, setupErr
+		return proof, gammas, setupErr
 	}
 	commit := commitInnerProduct(params.Gg, hp, bl, br, params.GP)
 	ipProof, _ := proveInnerProduct(bl, br, commit, th, ipp)
 
-	proof.V = V
+	proof.Vs = commitments
 	proof.Taux = tauX
 	proof.Mu = mu
 	proof.Tprime = th
 	proof.InnerProductProof = ipProof
 	proof.Params = params
 
-	return proof, gamma, nil
+	return proof, gammas, nil
 }
 
 /*
 Verify returns true if and only if the proof is valid.
 */
-func (proof *BulletProof) Verify() (bool, error) {
+func (proof *MultiBulletProof) Verify() (bool, error) {
 	params := proof.Params
 	mod := params.GP.N()
+
+	m := len(proof.Vs)
+	// bitsPerValue := int(params.N) / m
 
 	// Recover x, y, z using Fiat-Shamir heuristic
 	x, _, _ := HashBP(proof.T1, proof.T2)
@@ -267,9 +249,14 @@ func (proof *BulletProof) Verify() (bool, error) {
 	lhs := PedersenCommit(proof.Tprime, proof.Taux, params.H, params.GP)
 
 	// Compute right hand side
-	rhs := params.GP.Element().Scale(proof.V, zSquared)
+	powersOfz := powerOf(z, int64(m), params.GP)
+	rhs := params.GP.Identity()
+	for j := 0; j < m; j++ {
+		tmp := params.GP.Element().Scale(proof.Vs[j], new(big.Int).Mul(zSquared, powersOfz[j]))
+		rhs.Add(rhs, tmp)
+	}
 
-	delta := params.delta(y, z)
+	delta := params.deltaMul(y, z, int64(m))
 	gDelta := params.GP.Element().BaseScale(delta)
 
 	rhs.Add(rhs, gDelta)
@@ -281,6 +268,7 @@ func (proof *BulletProof) Verify() (bool, error) {
 	rhs.Add(rhs, T2x2)
 
 	c65 := rhs.IsEqual(lhs) // (65)
+	fmt.Println("Check 65:", c65)
 
 	// Compute P - lhs  #################### Condition (66) ######################
 
@@ -333,6 +321,7 @@ func (proof *BulletProof) Verify() (bool, error) {
 /*
 sampleRandomVector generates a vector composed by random big numbers.
 */
+/*
 func sampleRandomVector(N int64, GP group.Group) []*big.Int {
 	s := make([]*big.Int, N)
 	for i := int64(0); i < N; i++ {
@@ -340,98 +329,69 @@ func sampleRandomVector(N int64, GP group.Group) []*big.Int {
 	}
 	return s
 }
+*/
 
 /*
-updateGenerators is responsible for computing generators in the following format:
+updateGenerators is reGPonsible for computing generators in the following format:
 [h_1, h_2^(y^-1), ..., h_n^(y^(-n+1))], where [h_1, h_2, ..., h_n] is the original
 vector of generators. This method is used both by prover and verifier. After this
-update we have that A is a vector commitments to (aL, aR . y^n). Also, S is a vector
+update we have that A is a vector commitments to (aL, aR . y^n). Also S is a vector
 commitment to (sL, sR . y^n).
 */
+/*
 func updateGenerators(Hh []group.Element, y *big.Int, N int64, GP group.Group) []group.Element {
-	// Compute h' // (64)
-	hp := make([]group.Element, N)
-
+	var (
+		i int64
+	)
+	// Compute h'                                                          // (64)
+	hprime := make([]group.Element, N)
 	// Switch generators
-	yInv := new(big.Int).ModInverse(y, GP.N())
-	yExp := yInv
-	hp[0] = Hh[0]
-
-	for i := int64(1); i < N; i++ {
-		hp[i] = GP.Element().Scale(Hh[i], yExp)
-		yExp = new(big.Int).Mul(yExp, yInv)
+	yinv := bn.ModInverse(y, GP.N())
+	expy := yinv
+	hprime[0] = Hh[0]
+	i = 1
+	for i < N {
+		hprime[i] = GP.Element().Scale(Hh[i], expy)
+		expy = bn.Multiply(expy, yinv)
+		i = i + 1
 	}
-
-	return hp
+	return hprime
 }
-
-/*
-aR = aL - 1^n
 */
-func computeAR(x []int64) ([]int64, error) {
-	result := make([]int64, len(x))
-	for i := int64(0); i < int64(len(x)); i++ {
-		if x[i] == 0 {
-			result[i] = -1
-		} else if x[i] == 1 {
-			result[i] = 0
-		} else {
-			return nil, errors.New("input contains non-binary element")
-		}
-	}
-	return result, nil
-}
 
-func commitVectorBig(aL, aR []*big.Int, alpha *big.Int, H group.Element,
-	g, h []group.Element, n int64, GP group.Group) group.Element {
-	// Compute h^alpha.vg^aL.vh^aR
-	R := GP.Element().Scale(H, alpha)
-	for i := int64(0); i < n; i++ {
-		R.Add(R, GP.Element().Scale(g[i], aL[i]))
-		R.Add(R, GP.Element().Scale(h[i], aR[i]))
-	}
-	return R
-}
-
-/*
-commitVector computes a commitment to the bit of the secret.
-*/
-func commitVector(aL, aR []int64, alpha *big.Int, H group.Element,
-	g, h []group.Element, n int64, GP group.Group) group.Element {
-	// Compute h^alpha.vg^aL.vh^aR
-	R := GP.Element().Scale(H, alpha)
-	for i := int64(0); i < n; i++ {
-		gaL := GP.Element().Scale(g[i], big.NewInt(aL[i]))
-		haR := GP.Element().Scale(h[i], big.NewInt(aR[i]))
-		R.Add(R, gaL)
-		R.Add(R, haR)
-	}
-	return R
-}
-
-// delta(y,z) = (z - z^2) . < 1Pow, yPow > - z^3 . < 1Pow, 2Pow >
-func (params *BulletProofSetupParams) delta(y, z *big.Int) *big.Int {
+// delta(y,z) = (z - z^2) . < 1Pow(nm), yPow(nm) > - sum_{j=0}^{m-1} (z^{j+3} . < 1Pow, 2Pow >)
+func (params *BulletProofSetupParams) deltaMul(y, z *big.Int, m int64) *big.Int {
 	mod := params.GP.N()
 	result := new(big.Int)
 
-	onePow, _ := VectorCopy(new(big.Int).SetInt64(1), params.N)
-	twoPow := powerOf(big.NewInt(2), params.N, params.GP)
-	yPow := powerOf(y, params.N, params.GP)
+	// Do a confusing swap: take nm <- n and n <- n/m.
+	// This is because params.N is always the upper bit bound,
+	// and so nm must not exceed it.
+	nm := params.N / m
+
+	onePow, _ := VectorCopy(new(big.Int).SetInt64(1), nm)
+	twoPow := powerOf(big.NewInt(2), nm, params.GP)
 
 	zSquared := new(big.Int).Mod(new(big.Int).Mul(z, z), mod)
-	zCubed := new(big.Int).Mod(new(big.Int).Mul(zSquared, z), mod)
 
 	// (z-z^2)
 	t1 := new(big.Int).Mod(new(big.Int).Sub(z, zSquared), mod)
 
-	// < 1Pow, yPow >
-	t2, _ := ScalarProduct(onePow, yPow, params.GP)
+	// < 11Pow(n/m), yPow(n/m) >
+	onePowNM, _ := VectorCopy(new(big.Int).SetInt64(1), params.N)
+	yPowNM := powerOf(y, params.N, params.GP)
+	t2, _ := ScalarProduct(onePowNM, yPowNM, params.GP)
 
 	// < 1Pow, 2Pow >
 	sp12, _ := ScalarProduct(onePow, twoPow, params.GP)
 
-	// z3 . < 1Pow, 2Pow >
-	t3 := new(big.Int).Mod(new(big.Int).Mul(zCubed, sp12), mod)
+	// sum_{j=0}^{m-1} z^{j+3} . < 1Pow, 2Pow >
+	t3 := big.NewInt(0)
+	for j := int64(0); j < m; j++ {
+		zp := new(big.Int).Exp(z, big.NewInt(j+3), params.GP.N())
+		tmp := new(big.Int).Mod(new(big.Int).Mul(zp, sp12), params.GP.N())
+		t3.Mod(new(big.Int).Add(t3, tmp), params.GP.N())
+	}
 
 	result.Mod(t2.Mul(t2, t1), mod)
 	result.Mod(result.Sub(result, t3), mod)
