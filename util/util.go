@@ -18,94 +18,29 @@
 package util
 
 import (
-	"crypto/sha256"
 	"github.com/takakv/msc-poc/group"
 	"math/big"
-
-	"github.com/ing-bank/zkrp/crypto/bn256"
-	"github.com/ing-bank/zkrp/crypto/p256"
-	"github.com/ing-bank/zkrp/util/bn"
-	"github.com/ing-bank/zkrp/util/byteconversion"
-)
-
-// Constants that are going to be used frequently, then we just need to compute them once.
-var (
-	G1 = new(bn256.G1).ScalarBaseMult(new(big.Int).SetInt64(1))
-	G2 = new(bn256.G2).ScalarBaseMult(new(big.Int).SetInt64(1))
-	E  = bn256.Pair(G1, G2)
 )
 
 /*
 Decompose receives as input a bigint x and outputs an array of integers such that
 x = sum(xi.u^i), i.e. it returns the decomposition of x into base u.
 */
-func Decompose(x *big.Int, u int64, l int64) ([]int64, error) {
-	var (
-		result []int64
-		i      int64
-	)
-	result = make([]int64, l)
-	i = 0
-	for i < l {
-		result[i] = bn.Mod(x, new(big.Int).SetInt64(u)).Int64()
+func Decompose(x *big.Int, u int64, l int64) []int64 {
+	result := make([]int64, l)
+
+	for i := int64(0); i < l; i++ {
+		result[i] = new(big.Int).Mod(x, new(big.Int).SetInt64(u)).Int64()
 		x = new(big.Int).Div(x, new(big.Int).SetInt64(u))
-		i = i + 1
 	}
-	return result, nil
+
+	return result
 }
 
-/*
-Commit method corresponds to the Pedersen commitment scheme. Namely, given input
-message x, and randomness r, it outputs g^x.h^r.
-*/
-func Commit(x, r *big.Int, h *bn256.G2) (*bn256.G2, error) {
-	var C = new(bn256.G2).ScalarBaseMult(x)
-	C.Add(C, new(bn256.G2).ScalarMult(h, r))
-	return C, nil
-}
-
-/*
-CommitG1 method corresponds to the Pedersen commitment scheme. Namely, given input
-message x, and randomness r, it outputs g^x.h^r.
-*/
-func CommitG1(x, r *big.Int, h *p256.P256) (*p256.P256, error) {
-	var C = new(p256.P256).ScalarBaseMult(x)
-	Hr := new(p256.P256).ScalarMult(h, r)
-	C.Add(C, Hr)
-	return C, nil
-}
-
-func CommitG1SP(x, r *big.Int, h group.Element, SP group.Group) (group.Element, error) {
-	// var C = new(p256.P256).ScalarBaseMult(x)
-	C := SP.Element().BaseScale(x)
-	// Hr := new(p256.P256).ScalarMult(h, r)
-	Hr := SP.Element().Scale(h, r)
-	C = SP.Element().Add(C, Hr)
-	return C, nil
-}
-
-/*
-HashSet is responsible for the computing a Zp element given elements from GT and G2.
-*/
-func HashSet(a *bn256.GT, D *bn256.G2) (*big.Int, error) {
-	digest := sha256.New()
-	digest.Write([]byte(a.String()))
-	digest.Write([]byte(D.String()))
-	output := digest.Sum(nil)
-	tmp := output[0:]
-	return byteconversion.FromByteArray(tmp)
-}
-
-/*
-Hash is responsible for the computing a Zp element given elements from GT and G2.
-*/
-func Hash(a []*bn256.GT, D *bn256.G2) (*big.Int, error) {
-	digest := sha256.New()
-	for i := range a {
-		digest.Write([]byte(a[i].String()))
-	}
-	digest.Write([]byte(D.String()))
-	output := digest.Sum(nil)
-	tmp := output[0:]
-	return byteconversion.FromByteArray(tmp)
+// PedersenCommit creates a commitment to secret x using randomness r in group GP.
+func PedersenCommit(x, r *big.Int, h group.Element, GP group.Group) group.Element {
+	C := GP.Element().BaseScale(x)
+	Hr := GP.Element().Scale(h, r)
+	C = GP.Element().Add(C, Hr)
+	return C
 }

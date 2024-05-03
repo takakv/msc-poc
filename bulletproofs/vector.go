@@ -105,6 +105,15 @@ func VectorSub(a, b []*big.Int, mod *big.Int) ([]*big.Int, error) {
 	return result, nil
 }
 
+func VectorAddConst(a []*big.Int, c *big.Int, mod *big.Int) []*big.Int {
+	result := make([]*big.Int, len(a))
+	for i := range result {
+		result[i] = new(big.Int).Add(a[i], c)
+		result[i].Mod(result[i], mod)
+	}
+	return result
+}
+
 /*
 VectorScalarMul computes vector scalar multiplication componentwisely.
 */
@@ -145,6 +154,16 @@ func VectorMul(a, b []*big.Int, mod *big.Int) ([]*big.Int, error) {
 		i = i + 1
 	}
 	return result, nil
+}
+
+func VectorInnerProduct(a, b []*big.Int, mod *big.Int) *big.Int {
+	result := big.NewInt(0)
+	for i := range a {
+		tmp := new(big.Int).Mul(a[i], b[i])
+		result.Add(result, tmp.Mod(tmp, mod))
+	}
+	result.Mod(result, mod)
+	return result
 }
 
 /*
