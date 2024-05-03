@@ -38,17 +38,17 @@ type InnerProductParams struct {
 	Gg []group.Element // Random generators
 	Hh []group.Element // Random generators
 	Uu group.Element   // Internal fixed element with unknown dlog
-	SP group.Group
+	GP group.Group
 }
 
 /*
 InnerProductProof contains the elements used to verify the Inner Product Proof.
 */
 type InnerProductProof struct {
-	P      group.Element // Commitment
-	Cc     *big.Int      // Inner product
-	A      *big.Int
-	B      *big.Int
+	P      group.Element // Commitment g^a . h^b
+	Cc     *big.Int      // Inner product of <a,b>
+	A      *big.Int      `json:"a"`
+	B      *big.Int      `json:"b"`
 	L      []group.Element
 	R      []group.Element
 	Params InnerProductParams
@@ -83,16 +83,16 @@ func setupInnerProduct(g, h []group.Element, N int64, SP group.Group) (InnerProd
 	}
 
 	params.Uu, _ = SP.Element().MapToGroup(SEEDU)
-	params.SP = SP
+	params.GP = SP
 
 	return params, nil
 }
 
 // computePP computes P' as P' = P.u^(x.c) and returns P' and u^x
 func computePP(P group.Element, c *big.Int, x *big.Int, params InnerProductParams) (group.Element, group.Element) {
-	ux := params.SP.Element().Scale(params.Uu, x)
-	uxc := params.SP.Element().Scale(ux, c)
-	PP := params.SP.Element().Add(P, uxc)
+	ux := params.GP.Element().Scale(params.Uu, x)
+	uxc := params.GP.Element().Scale(ux, c)
+	PP := params.GP.Element().Add(P, uxc)
 	return PP, ux
 }
 
@@ -121,7 +121,7 @@ func proveInnerProduct(a, b []*big.Int, P group.Element, c *big.Int, params Inne
 	PP, ux := computePP(P, c, x, params) // (8)
 
 	// Execute Protocol 2 recursively
-	proof = computeBipRecursive(a, b, params.Gg, params.Hh, ux, PP, n, Ls, Rs, params.SP) // 9
+	proof = computeBipRecursive(a, b, params.Gg, params.Hh, ux, PP, n, Ls, Rs, params.GP) // 9
 
 	proof.Params = params
 	proof.P = P
@@ -232,32 +232,32 @@ func (proof InnerProductProof) Verify() (bool, error) {
 	for i := int64(0); i < int64(logn); i++ {
 		nprime = nprime / 2                      // (20)
 		x, _, _ = HashBP(proof.L[i], proof.R[i]) // (26)
-		xinv = bn.ModInverse(x, proof.Params.SP.N())
+		xinv = bn.ModInverse(x, proof.Params.GP.N())
 		// Compute g' = g[:n']^(x^-1) * g[n':]^(x)                            // (29)
-		ngprime = vectorScalarExp(gprime[:nprime], xinv, proof.Params.SP)
-		ngprime2 = vectorScalarExp(gprime[nprime:], x, proof.Params.SP)
-		gprime, _ = VectorECAdd(ngprime, ngprime2, proof.Params.SP)
+		ngprime = vectorScalarExp(gprime[:nprime], xinv, proof.Params.GP)
+		ngprime2 = vectorScalarExp(gprime[nprime:], x, proof.Params.GP)
+		gprime, _ = VectorECAdd(ngprime, ngprime2, proof.Params.GP)
 		// Compute h' = h[:n']^(x)    * h[n':]^(x^-1)                         // (30)
-		nhprime = vectorScalarExp(hprime[:nprime], x, proof.Params.SP)
-		nhprime2 = vectorScalarExp(hprime[nprime:], xinv, proof.Params.SP)
-		hprime, _ = VectorECAdd(nhprime, nhprime2, proof.Params.SP)
+		nhprime = vectorScalarExp(hprime[:nprime], x, proof.Params.GP)
+		nhprime2 = vectorScalarExp(hprime[nprime:], xinv, proof.Params.GP)
+		hprime, _ = VectorECAdd(nhprime, nhprime2, proof.Params.GP)
 		// Compute P' = L^(x^2).P.R^(x^-2)                                    // (31)
-		x2 = bn.Mod(bn.Multiply(x, x), proof.Params.SP.N())
-		x2inv = bn.ModInverse(x2, proof.Params.SP.N())
-		Pprime.Add(Pprime, proof.Params.SP.Element().Scale(proof.L[i], x2))
-		Pprime.Add(Pprime, proof.Params.SP.Element().Scale(proof.R[i], x2inv))
+		x2 = bn.Mod(bn.Multiply(x, x), proof.Params.GP.N())
+		x2inv = bn.ModInverse(x2, proof.Params.GP.N())
+		Pprime.Add(Pprime, proof.Params.GP.Element().Scale(proof.L[i], x2))
+		Pprime.Add(Pprime, proof.Params.GP.Element().Scale(proof.R[i], x2inv))
 	}
 
 	// c == a*b and checks if P = g^a.h^b.u^c                                     // (16)
 	ab := bn.Multiply(proof.A, proof.B)
-	ab = bn.Mod(ab, proof.Params.SP.N())
+	ab = bn.Mod(ab, proof.Params.GP.N())
 	// Compute right hand side
-	rhs := proof.Params.SP.Element().Scale(gprime[0], proof.A)
-	hb := proof.Params.SP.Element().Scale(hprime[0], proof.B)
-	rhs = proof.Params.SP.Element().Add(rhs, hb)
-	rhs = proof.Params.SP.Element().Add(rhs, proof.Params.SP.Element().Scale(ux, ab))
+	rhs := proof.Params.GP.Element().Scale(gprime[0], proof.A)
+	hb := proof.Params.GP.Element().Scale(hprime[0], proof.B)
+	rhs = proof.Params.GP.Element().Add(rhs, hb)
+	rhs = proof.Params.GP.Element().Add(rhs, proof.Params.GP.Element().Scale(ux, ab))
 	// Compute inverse of left hand side
-	nP := proof.Params.SP.Element().Negate(Pprime)
+	nP := proof.Params.GP.Element().Negate(Pprime)
 	nP.Add(nP, rhs)
 	// If both sides are equal then nP must be zero                               // (17)
 	c := nP.IsIdentity()

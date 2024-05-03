@@ -14,8 +14,8 @@ type elGamalCiphertextJSON struct {
 
 type ballotDataJSON struct {
 	Ballot    json.RawMessage `json:"ballot"`
-	BpLower   json.RawMessage `json:"bpLower"`
-	BpUpper   json.RawMessage `json:"bpUpper"`
+	BpLower   json.RawMessage `json:"lbProof"`
+	BpUpper   json.RawMessage `json:"ubProof"`
 	VoteProof json.RawMessage `json:"voteProof"`
 }
 
