@@ -7,8 +7,8 @@ import (
 )
 
 type ElGamalCiphertext struct {
-	U group.Element // *big.Int
-	V group.Element // *big.Int
+	U group.Element `json:"u"`
+	V group.Element `json:"v"`
 }
 
 func encryptVote(choice uint16, egPK group.Element, FFG group.Group) (ElGamalCiphertext, *big.Int) {

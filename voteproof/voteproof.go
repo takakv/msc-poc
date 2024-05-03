@@ -29,10 +29,10 @@ type AlgebraicParameters struct {
 
 // ProofParams holds the parameters of the vote correctness proof system.
 type ProofParams struct {
-	bx                  uint8  // Length of the secret.
-	bc                  uint16 // Length of the challenge.
-	bg                  uint16 // Length of the order of the smaller group.
-	bAbort              int    // Abort parameter.
+	Bx                  uint8  // Length of the secret.
+	Bc                  uint16 // Length of the challenge.
+	Bg                  uint16 // Length of the order of the smaller group.
+	Bb                  int    // Abort parameter.
 	RangeLo             uint16 // Inclusive lower bound of the range.
 	RangeHi             uint16 // Inclusive upper bound of the range.
 	AlgebraicParameters        // Group descriptions.
@@ -80,16 +80,16 @@ type SigmaProof struct {
 func Setup(lenSecret uint8, lenChallenge uint16, groupOrderLog uint16,
 	rangeLo uint16, rangeHi uint16, AP AlgebraicParameters) (ProofParams, error) {
 	params := ProofParams{}
-	params.bx = lenSecret
-	params.bc = lenChallenge
-	params.bg = groupOrderLog
-	params.bAbort = int(groupOrderLog) - 1 - int(lenSecret) - int(lenChallenge)
+	params.Bx = lenSecret
+	params.Bc = lenChallenge
+	params.Bg = groupOrderLog
+	params.Bb = int(groupOrderLog) - 1 - int(lenSecret) - int(lenChallenge)
 	params.RangeLo = rangeLo
 	params.RangeHi = rangeHi
 	params.GFF = AP.GFF
 	params.GEC = AP.GEC
 
-	if params.bAbort < 1 {
+	if params.Bb < 1 {
 		return params, errors.New("inconsistent parameter choice")
 	}
 
@@ -124,11 +124,11 @@ func getFSChallenge(w group.Element, Kp group.Element, Kq1, Kq2 group.Element, p
 }
 
 func Prove(secret *big.Int, rp *big.Int, rq1, rq2 *big.Int, params ProofParams) SigmaProof {
-	bxbc := big.NewInt(int64(uint16(params.bx) + params.bc))
+	bxbc := big.NewInt(int64(uint16(params.Bx) + params.Bc))
 	// Inclusive lower bound
 	zLowerBound := new(big.Int).Exp(BigTwo, bxbc, nil)
 	// Exclusive upper bound
-	zUpperBound := new(big.Int).Exp(BigTwo, new(big.Int).Add(bxbc, big.NewInt(int64(params.bAbort))), nil)
+	zUpperBound := new(big.Int).Exp(BigTwo, new(big.Int).Add(bxbc, big.NewInt(int64(params.Bb))), nil)
 
 	// Abort loop
 	for {
@@ -148,7 +148,7 @@ func Prove(secret *big.Int, rp *big.Int, rq1, rq2 *big.Int, params ProofParams) 
 		Kq2 := pedersenCommit(kq, tq2, params.GEC)
 
 		// Challenge
-		challenge := getFSChallenge(w, Kp, Kq1, Kq2, params.bc)
+		challenge := getFSChallenge(w, Kp, Kq1, Kq2, params.Bc)
 		z := new(big.Int).Add(k, new(big.Int).Mul(challenge, secret))
 		if z.Cmp(zLowerBound) == -1 || z.Cmp(zUpperBound) != -1 {
 			fmt.Println("Aborted")
@@ -180,11 +180,11 @@ func Prove(secret *big.Int, rp *big.Int, rq1, rq2 *big.Int, params ProofParams) 
 // NB! The range proof(s) that assert "smallness" of the secret must be verified
 // prior to verifying the transcript. Verify does not verify the range proof(s).
 func (proof *SigmaProof) Verify(comm VerCommitments) bool {
-	bxbc := big.NewInt(int64(uint16(proof.Params.bx) + proof.Params.bc))
+	bxbc := big.NewInt(int64(uint16(proof.Params.Bx) + proof.Params.Bc))
 	// Inclusive lower bound
 	zLowerBound := new(big.Int).Exp(BigTwo, bxbc, nil)
 	// Exclusive upper bound
-	zUpperBound := new(big.Int).Exp(BigTwo, new(big.Int).Add(bxbc, big.NewInt(int64(proof.Params.bAbort))), nil)
+	zUpperBound := new(big.Int).Exp(BigTwo, new(big.Int).Add(bxbc, big.NewInt(int64(proof.Params.Bb))), nil)
 
 	// Verify whether z lies within the safe (no-leak) range.
 	if proof.Z.Cmp(zLowerBound) == -1 || proof.Z.Cmp(zUpperBound) != -1 {
@@ -192,7 +192,7 @@ func (proof *SigmaProof) Verify(comm VerCommitments) bool {
 	}
 
 	// Verify challenge correctness.
-	challenge := getFSChallenge(proof.W, proof.Kp, proof.Kq1, proof.Kq2, proof.Params.bc)
+	challenge := getFSChallenge(proof.W, proof.Kp, proof.Kq1, proof.Kq2, proof.Params.Bc)
 	if challenge.Cmp(proof.Challenge) != 0 {
 		return false
 	}
