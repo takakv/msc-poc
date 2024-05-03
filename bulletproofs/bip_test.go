@@ -44,7 +44,7 @@ func TestInnerProduct(t *testing.T) {
 
 	var SecP256k1Group = group.SecP256k1()
 	innerProductParams, _ := setupInnerProduct(nil, nil, 4, SecP256k1Group)
-	commitment := commitInnerProduct(innerProductParams.Gg, innerProductParams.Hh, a, b, innerProductParams.SP)
+	commitment := commitInnerProduct(innerProductParams.Gg, innerProductParams.Hh, a, b, innerProductParams.GP)
 
 	proof, _ := proveInnerProduct(a, b, commitment, c, innerProductParams)
 	ok, _ := proof.Verify()

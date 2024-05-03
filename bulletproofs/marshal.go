@@ -10,16 +10,16 @@ type innerProductParamsJSON struct {
 	Uu json.RawMessage
 	Gg []json.RawMessage
 	Hh []json.RawMessage
-	SP json.RawMessage
+	GP json.RawMessage
 }
 
 type innerProductProofJSON struct {
 	P      json.RawMessage
 	Cc     *big.Int
-	A      *big.Int
-	B      *big.Int
-	Ls     []json.RawMessage
-	Rs     []json.RawMessage
+	A      *big.Int `json:"a"`
+	B      *big.Int `json:"b"`
+	L      []json.RawMessage
+	R      []json.RawMessage
 	Params innerProductParamsJSON
 }
 
@@ -42,7 +42,7 @@ func ipParamsFromRawMessage(j innerProductParamsJSON, g group.Group) InnerProduc
 		Uu: g.Element(),
 		Gg: make([]group.Element, len(j.Gg)),
 		Hh: make([]group.Element, len(j.Hh)),
-		SP: g,
+		GP: g,
 	}
 
 	_ = params.Uu.UnmarshalJSON(j.Uu)
@@ -58,8 +58,8 @@ func ipParamsFromRawMessage(j innerProductParamsJSON, g group.Group) InnerProduc
 
 func ipProofFromRawMessage(j innerProductProofJSON, g group.Group) InnerProductProof {
 	proof := InnerProductProof{
-		L:      make([]group.Element, len(j.Ls)),
-		R:      make([]group.Element, len(j.Rs)),
+		L:      make([]group.Element, len(j.L)),
+		R:      make([]group.Element, len(j.R)),
 		P:      g.Element(),
 		Cc:     j.Cc,
 		A:      j.A,
@@ -70,8 +70,8 @@ func ipProofFromRawMessage(j innerProductProofJSON, g group.Group) InnerProductP
 	for i := range proof.L {
 		proof.L[i] = g.Element()
 		proof.R[i] = g.Element()
-		_ = proof.L[i].UnmarshalJSON(j.Ls[i])
-		_ = proof.R[i].UnmarshalJSON(j.Rs[i])
+		_ = proof.L[i].UnmarshalJSON(j.L[i])
+		_ = proof.R[i].UnmarshalJSON(j.R[i])
 	}
 	_ = proof.P.UnmarshalJSON(j.P)
 
@@ -86,16 +86,16 @@ func BulletProofUnmarshalJSON(b []byte, params BulletProofSetupParams) (BulletPr
 	}
 
 	decodedProof := BulletProof{
-		V:                 params.SP.Element(),
-		A:                 params.SP.Element(),
-		S:                 params.SP.Element(),
-		T1:                params.SP.Element(),
-		T2:                params.SP.Element(),
+		V:                 params.GP.Element(),
+		A:                 params.GP.Element(),
+		S:                 params.GP.Element(),
+		T1:                params.GP.Element(),
+		T2:                params.GP.Element(),
 		Taux:              tmp.Taux,
 		Mu:                tmp.Mu,
 		Tprime:            tmp.Tprime,
-		InnerProductProof: ipProofFromRawMessage(tmp.InnerProductProof, params.SP),
-		Commit:            params.SP.Element(),
+		InnerProductProof: ipProofFromRawMessage(tmp.InnerProductProof, params.GP),
+		Commit:            params.GP.Element(),
 		Params:            params,
 	}
 

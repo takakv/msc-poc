@@ -12,8 +12,8 @@ import (
 // BallotData contains elements that assert the correctness of a vote.
 type BallotData struct {
 	Ballot    ElGamalCiphertext        `json:"ballot"`    // The ElGamal ciphertext, i.e. the encrypted ballot.
-	BpLower   bulletproofs.BulletProof `json:"bpLower"`   // Bulletproof for the lower bound.
-	BpUpper   bulletproofs.BulletProof `json:"bpUpper"`   // Bulletproof for the upper bound.
+	BpLower   bulletproofs.BulletProof `json:"lbProof"`   // Bulletproof for the lower bound.
+	BpUpper   bulletproofs.BulletProof `json:"ubProof"`   // Bulletproof for the upper bound.
 	VoteProof voteproof.SigmaProof     `json:"voteProof"` // Proof of vote correctness.
 }
 
