@@ -7,13 +7,9 @@ import (
 )
 
 type innerProductParamsJSON struct {
-	N  int64
-	Cc *big.Int
 	Uu json.RawMessage
-	H  json.RawMessage
 	Gg []json.RawMessage
 	Hh []json.RawMessage
-	P  json.RawMessage
 	SP json.RawMessage
 }
 
@@ -23,6 +19,7 @@ type innerProductProofJSON struct {
 	Rs     []json.RawMessage
 	U      json.RawMessage
 	P      json.RawMessage
+	Cc     *big.Int
 	Gg     json.RawMessage
 	Hh     json.RawMessage
 	A      *big.Int
@@ -46,25 +43,19 @@ type bulletProofJSON struct {
 
 func ipParamsFromRawMessage(j innerProductParamsJSON, g group.Group) InnerProductParams {
 	params := InnerProductParams{
-		N:  j.N,
-		Cc: j.Cc,
 		Uu: g.Element(),
-		H:  g.Element(),
 		Gg: make([]group.Element, len(j.Gg)),
 		Hh: make([]group.Element, len(j.Hh)),
-		P:  g.Element(),
 		SP: g,
 	}
 
 	_ = params.Uu.UnmarshalJSON(j.Uu)
-	_ = params.H.UnmarshalJSON(j.H)
 	for i := range j.Gg {
 		params.Gg[i] = g.Element()
 		params.Hh[i] = g.Element()
 		_ = params.Gg[i].UnmarshalJSON(j.Gg[i])
 		_ = params.Hh[i].UnmarshalJSON(j.Hh[i])
 	}
-	_ = params.P.UnmarshalJSON(j.P)
 
 	return params
 }
@@ -76,6 +67,7 @@ func ipProofFromRawMessage(j innerProductProofJSON, g group.Group) InnerProductP
 		Rs:     make([]group.Element, len(j.Rs)),
 		U:      g.Element(),
 		P:      g.Element(),
+		Cc:     j.Cc,
 		Gg:     g.Element(),
 		Hh:     g.Element(),
 		A:      j.A,

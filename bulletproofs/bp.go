@@ -215,12 +215,12 @@ func Prove(secret *big.Int, params BulletProofSetupParams) (BulletProof, *big.In
 	hprime := updateGenerators(params.Hh, y, params.N, params.SP)
 
 	// SetupInnerProduct Inner Product (Section 4.2)
-	ipp, setupErr := setupInnerProduct(params.H, params.Gg, hprime, tprime, params.N, params.SP)
+	ipp, setupErr := setupInnerProduct(params.Gg, hprime, params.N, params.SP)
 	if setupErr != nil {
 		return proof, gamma, setupErr
 	}
 	commit := commitInnerProduct(params.Gg, hprime, bl, br, params.SP)
-	proofip, _ := proveInnerProduct(bl, br, commit, ipp)
+	proofip, _ := proveInnerProduct(bl, br, commit, tprime, ipp)
 
 	proof.V = V
 	proof.A = A
