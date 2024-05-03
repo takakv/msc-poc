@@ -14,16 +14,12 @@ type innerProductParamsJSON struct {
 }
 
 type innerProductProofJSON struct {
-	N      int64
-	Ls     []json.RawMessage
-	Rs     []json.RawMessage
-	U      json.RawMessage
 	P      json.RawMessage
 	Cc     *big.Int
-	Gg     json.RawMessage
-	Hh     json.RawMessage
 	A      *big.Int
 	B      *big.Int
+	Ls     []json.RawMessage
+	Rs     []json.RawMessage
 	Params innerProductParamsJSON
 }
 
@@ -62,29 +58,22 @@ func ipParamsFromRawMessage(j innerProductParamsJSON, g group.Group) InnerProduc
 
 func ipProofFromRawMessage(j innerProductProofJSON, g group.Group) InnerProductProof {
 	proof := InnerProductProof{
-		N:      j.N,
-		Ls:     make([]group.Element, len(j.Ls)),
-		Rs:     make([]group.Element, len(j.Rs)),
-		U:      g.Element(),
+		L:      make([]group.Element, len(j.Ls)),
+		R:      make([]group.Element, len(j.Rs)),
 		P:      g.Element(),
 		Cc:     j.Cc,
-		Gg:     g.Element(),
-		Hh:     g.Element(),
 		A:      j.A,
 		B:      j.B,
 		Params: ipParamsFromRawMessage(j.Params, g),
 	}
 
-	for i := range proof.Ls {
-		proof.Ls[i] = g.Element()
-		proof.Rs[i] = g.Element()
-		_ = proof.Ls[i].UnmarshalJSON(j.Ls[i])
-		_ = proof.Rs[i].UnmarshalJSON(j.Rs[i])
+	for i := range proof.L {
+		proof.L[i] = g.Element()
+		proof.R[i] = g.Element()
+		_ = proof.L[i].UnmarshalJSON(j.Ls[i])
+		_ = proof.R[i].UnmarshalJSON(j.Rs[i])
 	}
-	_ = proof.U.UnmarshalJSON(j.U)
 	_ = proof.P.UnmarshalJSON(j.P)
-	_ = proof.Gg.UnmarshalJSON(j.Gg)
-	_ = proof.Hh.UnmarshalJSON(j.Hh)
 
 	return proof
 }
