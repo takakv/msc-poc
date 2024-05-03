@@ -33,7 +33,6 @@ type bulletProofJSON struct {
 	Mu                *big.Int
 	Tprime            *big.Int
 	InnerProductProof innerProductProofJSON
-	Commit            json.RawMessage
 	Params            json.RawMessage
 }
 
@@ -95,7 +94,6 @@ func BulletProofUnmarshalJSON(b []byte, params BulletProofSetupParams) (BulletPr
 		Mu:                tmp.Mu,
 		Tprime:            tmp.Tprime,
 		InnerProductProof: ipProofFromRawMessage(tmp.InnerProductProof, params.GP),
-		Commit:            params.GP.Element(),
 		Params:            params,
 	}
 
@@ -104,7 +102,6 @@ func BulletProofUnmarshalJSON(b []byte, params BulletProofSetupParams) (BulletPr
 	_ = decodedProof.S.UnmarshalJSON(tmp.S)
 	_ = decodedProof.T1.UnmarshalJSON(tmp.T1)
 	_ = decodedProof.T2.UnmarshalJSON(tmp.T2)
-	_ = decodedProof.Commit.UnmarshalJSON(tmp.Commit)
 
 	return decodedProof, nil
 }
