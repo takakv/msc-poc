@@ -414,31 +414,30 @@ func commitVector(aL, aR []int64, alpha *big.Int, H group.Element, g, h []group.
 	return R
 }
 
+// delta(y,z) = (z-z^2) . < 1^n, y^n > - z^3 . < 1^n, 2^n >
 func (params *BulletProofSetupParams) delta(y, z *big.Int) *big.Int {
-	var (
-		result *big.Int
-	)
-	// delta(y,z) = (z-z^2) . < 1^n, y^n > - z^3 . < 1^n, 2^n >
-	z2 := bn.Multiply(z, z)
-	z2 = bn.Mod(z2, params.GP.N())
-	z3 := bn.Multiply(z2, z)
-	z3 = bn.Mod(z3, params.GP.N())
+	result := new(big.Int)
+
+	// (z-z^2)
+	z2 := new(big.Int).Mod(new(big.Int).Mul(z, z), params.GP.N())
+	t1 := new(big.Int).Mod(new(big.Int).Sub(z, z2), params.GP.N())
 
 	// < 1^n, y^n >
 	v1, _ := VectorCopy(new(big.Int).SetInt64(1), params.N)
 	vy := powerOf(y, params.N, params.GP)
-	sp1y, _ := ScalarProduct(v1, vy, params.GP)
+	t2, _ := ScalarProduct(v1, vy, params.GP)
 
 	// < 1^n, 2^n >
 	p2n := powerOf(new(big.Int).SetInt64(2), params.N, params.GP)
 	sp12, _ := ScalarProduct(v1, p2n, params.GP)
 
-	result = bn.Sub(z, z2)
-	result = bn.Mod(result, params.GP.N())
-	result = bn.Multiply(result, sp1y)
-	result = bn.Mod(result, params.GP.N())
-	result = bn.Sub(result, bn.Multiply(z3, sp12))
-	result = bn.Mod(result, params.GP.N())
+	// z3 . < 1^n, 2^n >
+	z3 := bn.Multiply(z2, z)
+	z3 = bn.Mod(z3, params.GP.N())
+	t3 := new(big.Int).Mod(new(big.Int).Mul(z3, sp12), params.GP.N())
+
+	result.Mod(t2.Mul(t2, t1), params.GP.N())
+	result.Mod(result.Sub(result, t3), params.GP.N())
 
 	return result
 }
