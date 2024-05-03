@@ -15,7 +15,6 @@ type BallotData struct {
 	BpLower   bulletproofs.BulletProof `json:"bpLower"`   // Bulletproof for the lower bound.
 	BpUpper   bulletproofs.BulletProof `json:"bpUpper"`   // Bulletproof for the upper bound.
 	VoteProof voteproof.SigmaProof     `json:"voteProof"` // Proof of vote correctness.
-
 }
 
 func castVote(pp PublicParameters) BallotData {
