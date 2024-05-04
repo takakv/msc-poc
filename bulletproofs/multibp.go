@@ -229,7 +229,7 @@ func (proof *MultiBulletProof) Verify() (bool, error) {
 	mod := params.GP.N()
 
 	m := len(proof.Vs)
-	// bitsPerValue := int(params.N) / m
+	bitsPerValue := int(params.N) / m
 
 	// Recover x, y, z using Fiat-Shamir heuristic
 	x, _, _ := HashBP(proof.T1, proof.T2)
@@ -271,6 +271,7 @@ func (proof *MultiBulletProof) Verify() (bool, error) {
 	fmt.Println("Check 65:", c65)
 
 	// Compute P - lhs  #################### Condition (66) ######################
+	// P = A . S^x . g^(-z) . (h')^(z . y^n + z^2 . 2^n)
 
 	// S^x
 	Sx := params.GP.Element().Scale(proof.S, x)
@@ -287,18 +288,23 @@ func (proof *MultiBulletProof) Verify() (bool, error) {
 	vy := powerOf(y, params.N, params.GP)
 	zyn, _ := VectorMul(vy, vz, mod)
 
-	p2n := powerOf(new(big.Int).SetInt64(2), params.N, params.GP)
-	z22n, _ := VectorScalarMul(p2n, zSquared, mod)
+	// (h')^(z . y^n)
+	hpExp, _ := VectorExp(hp, zyn, params.GP)
 
-	// z.y^n + z^2.2^n
-	zynz22n, _ := VectorAdd(zyn, z22n, mod)
+	powersOfTwo := powerOf(new(big.Int).SetInt64(2), int64(bitsPerValue), params.GP)
+	prod := params.GP.Identity()
 
+	for j := 0; j < m; j++ {
+		hpSlide := hp[j*bitsPerValue : (j+1)*bitsPerValue]
+		zp := new(big.Int).Exp(z, big.NewInt(2+int64(j)), mod)
+		exp := VectorAddConst(powersOfTwo, zp, mod)
+		val, _ := VectorExp(hpSlide, exp, params.GP)
+		prod.Add(prod, val)
+	}
+
+	tail := params.GP.Element().Add(hpExp, prod)
 	lP := params.GP.Element().Add(ASx, gpmz)
-
-	// h'^(z.y^n + z^2.2^n)
-	hpExp, _ := VectorExp(hp, zynz22n, params.GP)
-
-	lP.Add(lP, hpExp)
+	lP.Add(lP, tail)
 
 	// Compute P - rhs  #################### Condition (67) ######################
 
@@ -309,55 +315,16 @@ func (proof *MultiBulletProof) Verify() (bool, error) {
 	// Subtract lhs and rhs and compare with point at infinity
 	rP.Subtract(rP, lP)
 	c67 := rP.IsIdentity()
+	fmt.Println("Check 67:", c67)
 
 	// Verify Inner Product Proof ################################################
 	ok, _ := proof.InnerProductProof.Verify()
+	fmt.Println("Check 68:", ok)
 
 	result := c65 && c67 && ok
 
 	return result, nil
 }
-
-/*
-sampleRandomVector generates a vector composed by random big numbers.
-*/
-/*
-func sampleRandomVector(N int64, GP group.Group) []*big.Int {
-	s := make([]*big.Int, N)
-	for i := int64(0); i < N; i++ {
-		s[i], _ = rand.Int(rand.Reader, GP.N())
-	}
-	return s
-}
-*/
-
-/*
-updateGenerators is reGPonsible for computing generators in the following format:
-[h_1, h_2^(y^-1), ..., h_n^(y^(-n+1))], where [h_1, h_2, ..., h_n] is the original
-vector of generators. This method is used both by prover and verifier. After this
-update we have that A is a vector commitments to (aL, aR . y^n). Also S is a vector
-commitment to (sL, sR . y^n).
-*/
-/*
-func updateGenerators(Hh []group.Element, y *big.Int, N int64, GP group.Group) []group.Element {
-	var (
-		i int64
-	)
-	// Compute h'                                                          // (64)
-	hprime := make([]group.Element, N)
-	// Switch generators
-	yinv := bn.ModInverse(y, GP.N())
-	expy := yinv
-	hprime[0] = Hh[0]
-	i = 1
-	for i < N {
-		hprime[i] = GP.Element().Scale(Hh[i], expy)
-		expy = bn.Multiply(expy, yinv)
-		i = i + 1
-	}
-	return hprime
-}
-*/
 
 // delta(y,z) = (z - z^2) . < 1Pow(nm), yPow(nm) > - sum_{j=0}^{m-1} (z^{j+3} . < 1Pow, 2Pow >)
 func (params *BulletProofSetupParams) deltaMul(y, z *big.Int, m int64) *big.Int {
