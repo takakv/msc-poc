@@ -283,6 +283,7 @@ func (proof *BulletProof) Verify() (bool, error) {
 	c65 := rhs.IsEqual(lhs) // (65)
 
 	// Compute P - lhs  #################### Condition (66) ######################
+	// P = A . S^x . g^(-z) . (h')^(z . yPow + z^2 . 2Pow)
 
 	// S^x
 	Sx := params.GP.Element().Scale(proof.S, x)
