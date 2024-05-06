@@ -5,7 +5,6 @@ import (
 	"github.com/takakv/msc-poc/bulletproofs"
 	"github.com/takakv/msc-poc/group"
 	"github.com/takakv/msc-poc/voteproof"
-	"os"
 	"strings"
 )
 import "math/big"
@@ -111,8 +110,9 @@ func setup(curveGroup group.Group) (PublicParameters, error) {
 func main() {
 	P256Group := group.P256()
 	P384Group := group.P384()
+	R255Group := group.Ristretto255()
 
-	groups := []group.Group{P256Group, P384Group}
+	groups := []group.Group{P256Group, P384Group, R255Group}
 
 	sepLen := 60
 
@@ -124,7 +124,8 @@ func main() {
 		fmt.Println("Generating public parameters for group:", g.Name())
 		pp, err := setup(g)
 		if err != nil {
-			os.Exit(1)
+			fmt.Println("Skipping execution for", g.Name(), "due to", err)
+			continue
 		}
 
 		fmt.Println(strings.Repeat("-", sepLen))

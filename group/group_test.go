@@ -29,12 +29,14 @@ var RFC3526ModPGroup3072 = NewModPGroup(
 var SecP256k1Group = SecP256k1()
 var P384Group = P384()
 var P256Group = P256()
+var R255Group = Ristretto255()
 
 var allGroups = []Group{
 	RFC3526ModPGroup3072,
 	// SecP256k1Group,
 	P256Group,
 	P384Group,
+	R255Group,
 }
 
 func TestGroup(t *testing.T) {
@@ -143,8 +145,6 @@ func testMarshalJSON(t *testing.T, testTimes int, g Group) {
 		if err != nil {
 			t.Error(err)
 		}
-
-		fmt.Println(string(enc))
 
 		err = gotEl.UnmarshalJSON(enc)
 		if err != nil {

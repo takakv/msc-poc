@@ -77,7 +77,7 @@ func TestXWithinRange(t *testing.T) {
 }
 
 func setupRange(t *testing.T, rangeEnd int64) BulletProofSetupParams {
-	params, err := Setup(rangeEnd, group.P256())
+	params, err := Setup(rangeEnd, group.Ristretto255())
 	if err != nil {
 		t.Errorf("Invalid range end: %s", err)
 		t.FailNow()
