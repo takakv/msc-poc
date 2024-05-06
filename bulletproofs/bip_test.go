@@ -42,8 +42,8 @@ func TestInnerProduct(t *testing.T) {
 
 	c := new(big.Int).SetInt64(142)
 
-	var SecP256k1Group = group.SecP256k1()
-	innerProductParams, _ := setupInnerProduct(nil, nil, 4, SecP256k1Group)
+	var testGroup = group.Ristretto255()
+	innerProductParams, _ := setupInnerProduct(nil, nil, 4, testGroup)
 	commitment := commitInnerProduct(innerProductParams.Gg, innerProductParams.Hh, a, b, innerProductParams.GP)
 
 	proof, _ := proveInnerProduct(a, b, commitment, c, innerProductParams)
