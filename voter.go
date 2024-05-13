@@ -2,7 +2,6 @@ package main
 
 import (
 	"crypto/rand"
-	"fmt"
 	"github.com/takakv/msc-poc/bulletproofs"
 	"github.com/takakv/msc-poc/voteproof"
 	"math/big"
@@ -17,12 +16,10 @@ type BallotData struct {
 	VoteProof voteproof.SigmaProof     `json:"voteProof"` // Proof of vote correctness.
 }
 
-func castVote(pp PublicParameters) BallotData {
+func castVote(pp PublicParameters) (BallotData, time.Duration) {
 	rBig, _ := rand.Int(rand.Reader, big.NewInt(int64(pp.candidateMax-pp.candidateMin)))
 
 	var choice = uint16(rBig.Uint64()) + pp.candidateMin
-	fmt.Println("Chosen candidate:", choice)
-
 	ciphertext, rp := encryptVote(choice, pp.EGPK, pp.FFGroupParams.I)
 
 	start := time.Now()
@@ -36,7 +33,6 @@ func castVote(pp PublicParameters) BallotData {
 	rangeProof := voteproof.Prove(big.NewInt(int64(choice)), rp, rq1, rq2inv, pp.RPParams)
 
 	duration := time.Since(start)
-	fmt.Println("Prove time:", duration)
 
 	bd := BallotData{
 		Ballot:    ciphertext,
@@ -45,5 +41,5 @@ func castVote(pp PublicParameters) BallotData {
 		VoteProof: rangeProof,
 	}
 
-	return bd
+	return bd, duration
 }

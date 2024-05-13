@@ -6,6 +6,7 @@ import (
 	"github.com/takakv/msc-poc/group"
 	"github.com/takakv/msc-poc/voteproof"
 	"strings"
+	"time"
 )
 import "math/big"
 
@@ -35,13 +36,16 @@ func setup(curveGroup group.Group) (PublicParameters, error) {
 
 	// In practice, since the proof is made non-interactive with FS, the
 	// challenge should be 256 bits long for 128 bits of collision resistance.
-	const challengeLength uint16 = 128
+	const challengeLength uint16 = 224
 
 	// The first candidate number is fixed at 101.
 	const candidateStart uint16 = 101
 	// The last candidate number varies depending on the election. The largest
 	// number of candidates so far in any Estonian election has been 15322.
-	const candidateEnd uint16 = 1000
+	// However, this does not reflect the highest candidate number available in
+	// any single electoral district. The largest number of candidates unified
+	// across an electoral district has been 1885.
+	const candidateEnd uint16 = 2000
 
 	RFC3526ModPGroup3072 := group.NewModPGroup(
 		"RFC3526ModPGroup3072",
@@ -108,13 +112,15 @@ func setup(curveGroup group.Group) (PublicParameters, error) {
 }
 
 func main() {
+	P256k1Group := group.SecP256k1()
 	P256Group := group.P256()
 	P384Group := group.P384()
 	R255Group := group.Ristretto255()
 
-	groups := []group.Group{P256Group, P384Group, R255Group}
+	groups := []group.Group{P256k1Group, R255Group, P256Group, P384Group}
 
 	sepLen := 60
+	iterCount := 1000
 
 	for i, g := range groups {
 		if i != 0 {
@@ -128,16 +134,40 @@ func main() {
 			continue
 		}
 
+		success := true
+		var castTotal time.Duration = 0
+		var bpVerTotal time.Duration = 0
+		var rpVerTotal time.Duration = 0
+
+		for j := 0; j < iterCount; j++ {
+
+			vote, elapsed := castVote(pp)
+			castTotal += elapsed
+
+			verify, times := verifyVote(vote, pp.RPParams)
+
+			bpVerTotal += times[0]
+			rpVerTotal += times[1]
+			success = success && verify
+		}
+
 		fmt.Println(strings.Repeat("-", sepLen))
 		fmt.Println("Vote casting")
-		vote := castVote(pp)
+
+		fmt.Println("Prove time:", castTotal/time.Duration(iterCount))
 
 		fmt.Println(strings.Repeat("-", sepLen))
 		fmt.Println("Vote verification")
-		verify := verifyVote(vote, pp.RPParams)
+
+		bpAvg := bpVerTotal / time.Duration(iterCount)
+		rpAvg := rpVerTotal / time.Duration(iterCount)
+
+		fmt.Println("Verify time BP:", bpAvg)
+		fmt.Println("Verify time RP:", rpAvg)
+		fmt.Println("Verify time total:", bpAvg+rpAvg)
 
 		fmt.Println(strings.Repeat("-", sepLen))
-		fmt.Println("Vote is correctly formed:", verify)
+		fmt.Println("Votes were correctly formed:", success)
 		fmt.Println(strings.Repeat("=", sepLen))
 	}
 }
