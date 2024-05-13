@@ -1,24 +1,25 @@
 package main
 
 import (
-	"fmt"
 	"github.com/takakv/msc-poc/voteproof"
 	"math/big"
 	"time"
 )
 
-func verifyVote(proofs BallotData, rpParams voteproof.ProofParams) bool {
+func verifyVote(proofs BallotData, rpParams voteproof.ProofParams) (bool, []time.Duration) {
+	verificationTimes := make([]time.Duration, 2)
+
 	startBP := time.Now()
 	// Verify the vote lower bound.
 	ok1, _ := proofs.BpLower.Verify()
 	if !ok1 {
-		return false
+		return false, nil
 	}
 
 	// Verify the vote upper bound.
 	ok2, _ := proofs.BpUpper.Verify()
 	if !ok2 {
-		return false
+		return false, nil
 	}
 	durationBP := time.Since(startBP)
 
@@ -43,11 +44,13 @@ func verifyVote(proofs BallotData, rpParams voteproof.ProofParams) bool {
 	result := proofs.VoteProof.Verify(commitments)
 	durationRP := time.Since(startRP)
 
-	fmt.Println("Verify time BP:", durationBP)
-	fmt.Println("Verify time RP:", durationRP)
+	// fmt.Println("Verify time BP:", durationBP)
+	// fmt.Println("Verify time RP:", durationRP)
 
-	durationTotal := durationBP + durationRP
-	fmt.Println("Verify time total:", durationTotal)
+	// durationTotal := durationBP + durationRP
+	// fmt.Println("Verify time total:", durationTotal)
+	verificationTimes[0] = durationBP
+	verificationTimes[1] = durationRP
 
-	return result
+	return result, verificationTimes
 }
